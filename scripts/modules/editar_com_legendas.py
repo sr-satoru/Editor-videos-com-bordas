@@ -69,16 +69,7 @@ class VideoRenderer:
                 bg_color = (255, 255, 255)
             elif "black" in style_lower:
                 bg_color = (0, 0, 0)
-            else:
-                # Se não for uma cor explícita no estilo, tenta usar a cor da moldura como fundo
-                # se o estilo for apenas "Moldura" ou algo genérico.
-                # Mas o pedido diz: "se e black o fudo e black"
-                # Vamos assumir que se o estilo contém a cor, usamos ela.
-                if isinstance(border_color, str) and border_color.startswith("#"):
-                    h = border_color.lstrip('#')
-                    bg_color = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
-                else:
-                    bg_color = border_color
+            # Removido fallback que usava border_color como fundo
 
         if "degradê" in (style or "").lower():
             return self.create_gradient_background(border_color)
@@ -130,15 +121,12 @@ class VideoRenderer:
                 frame_width = v_w + (scaled_border * 2)
                 frame_height = v_h + (scaled_border * 2)
                 
-                # Cor da moldura: se o estilo for "black", a moldura é branca (como no old/black.py)
-                # Se o estilo for "Moldura", usamos a cor selecionada.
-                frame_color = (255, 255, 255) # Default white
-                if "black" not in border_style.lower():
-                    if isinstance(border_color, str) and border_color.startswith("#"):
-                        h = border_color.lstrip('#')
-                        frame_color = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
-                    else:
-                        frame_color = border_color
+                # Cor da moldura: usa a cor selecionada na UI
+                if isinstance(border_color, str) and border_color.startswith("#"):
+                    h = border_color.lstrip('#')
+                    frame_color = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+                else:
+                    frame_color = border_color
 
                 frame_image = Image.new('RGB', (frame_width, frame_height), frame_color)
                 
