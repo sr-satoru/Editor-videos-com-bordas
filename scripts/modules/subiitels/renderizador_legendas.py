@@ -1,4 +1,6 @@
 import re
+import platform
+import os
 from PIL import Image, ImageDraw, ImageFont
 
 class RenderizadorLegendas:
@@ -6,20 +8,38 @@ class RenderizadorLegendas:
         self.gerenciador_emojis = gerenciador_emojis
 
     def _get_font(self, font_family, size):
-        """Carrega a fonte correta para Linux"""
+        """Carrega a fonte correta dependendo do Sistema Operacional"""
+        system = platform.system()
+        
         try:
-            # Mapeamento de fontes comuns para Liberation/DejaVu no Linux
-            font_map = {
-                "Arial Black": "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-                "Arial": "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                "Helvetica": "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                "Times": "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
-                "Courier": "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-                "Verdana": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                "Impact": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-                "Comic Sans MS": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-            }
-            font_path = font_map.get(font_family, "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf")
+            if system == "Windows":
+                # Mapeamento para Windows
+                font_map = {
+                    "Arial Black": "ariblk.ttf",
+                    "Arial": "arial.ttf",
+                    "Helvetica": "arial.ttf",
+                    "Times": "times.ttf",
+                    "Courier": "cour.ttf",
+                    "Verdana": "verdana.ttf",
+                    "Impact": "impact.ttf",
+                    "Comic Sans MS": "comic.ttf"
+                }
+                font_name = font_map.get(font_family, "arial.ttf")
+                font_path = os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'Fonts', font_name)
+            else:
+                # Mapeamento para Linux (Liberation/DejaVu)
+                font_map = {
+                    "Arial Black": "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+                    "Arial": "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                    "Helvetica": "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                    "Times": "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
+                    "Courier": "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+                    "Verdana": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                    "Impact": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    "Comic Sans MS": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+                }
+                font_path = font_map.get(font_family, "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf")
+            
             return ImageFont.truetype(font_path, size)
         except:
             return ImageFont.load_default()
