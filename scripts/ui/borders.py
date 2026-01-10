@@ -4,11 +4,13 @@ from PIL import Image, ImageTk
 from modules.video_editor import VideoEditor
 
 class VideoBorders(ttk.LabelFrame):
-    def __init__(self, parent, video_controls):
+    def __init__(self, parent, video_controls, subtitle_manager, emoji_manager):
         super().__init__(parent, text="Bordas do Vídeo")
         self.pack(fill="x", pady=10)
         
         self.video_controls = video_controls
+        self.subtitle_manager = subtitle_manager
+        self.emoji_manager = emoji_manager
         self.editor = VideoEditor()
         self.preview_image_tk = None # Manter referência para não ser coletado pelo GC
 
@@ -41,23 +43,27 @@ class VideoBorders(ttk.LabelFrame):
             self.color_indicator.config(bg=self.border_color)
             self.update_preview()
 
+    def get_effective_style(self):
+        """Retorna o estilo efetivo considerando o checkbox"""
+        if not self.add_border.get():
+            return "Sem moldura"
+        return self.style_var.get()
+
     def update_preview(self, event=None):
         video_path = self.video_controls.video_selector.current_video_path
         if not video_path:
             return
 
-        style = self.style_var.get()
-        # Se o check "Adicionar Borda" estiver desmarcado, talvez devêssemos ignorar? 
-        # Mas o combobox tem "Sem moldura". Vamos assumir que o combobox manda.
-        # Ou podemos usar o check para ligar/desligar o efeito.
-        if not self.add_border.get() and event is None: 
-            # Se foi chamado sem evento (ex: inicialização), e check tá off, não faz nada?
-            # Mas se o usuário muda o combo, ele espera ver o resultado.
-            # Vou forçar o check a ficar True se mudar o combo para algo que não seja "Sem moldura"?
-            pass
+        style = self.get_effective_style()
 
         # Gerar frame processado
-        frame = self.editor.generate_preview_image(video_path, style, self.border_color)
+        frame = self.editor.generate_preview_image(
+            video_path, 
+            style, 
+            self.border_color,
+            subtitles=self.subtitle_manager.get_subtitles(),
+            emoji_manager=self.emoji_manager
+        )
         
         if frame is not None:
             # Redimensionar para o canvas (360x640 - definido em preview.py)
@@ -71,7 +77,17 @@ class VideoBorders(ttk.LabelFrame):
             
             canvas = self.video_controls.video_selector.preview_canvas
             canvas.delete("all")
-            canvas.create_image(0, 0, anchor="nw", image=self.preview_image_tk)
+            
+            # Centralizar
+            c_width = canvas.winfo_width()
+            c_height = canvas.winfo_height()
+            if c_width < 10: c_width = 360 # Fallback se canvas não foi desenhado ainda
+            if c_height < 10: c_height = 640
+            
+            x = c_width // 2
+            y = c_height // 2
+            
+            canvas.create_image(x, y, anchor="center", image=self.preview_image_tk)
 
     def get_style(self):
         return self.style_var.get()

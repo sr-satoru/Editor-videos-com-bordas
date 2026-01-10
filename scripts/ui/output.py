@@ -6,12 +6,14 @@ from modules.video_editor import VideoEditor
 import threading
 
 class OutputVideo(ttk.LabelFrame):
-    def __init__(self, parent, video_controls, video_borders):
+    def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager):
         super().__init__(parent, text="Salvar Vídeo Processado")
         self.pack(fill="x", pady=10)
         
         self.video_controls = video_controls
         self.video_borders = video_borders
+        self.subtitle_manager = subtitle_manager
+        self.emoji_manager = emoji_manager
         self.editor = VideoEditor()
 
         self.output_path = tk.StringVar()
@@ -51,17 +53,18 @@ class OutputVideo(ttk.LabelFrame):
             messagebox.showwarning("Aviso", "Selecione uma pasta de saída.")
             return
             
-        style = self.video_borders.get_style()
+        style = self.video_borders.get_effective_style()
         color = self.video_borders.get_border_color()
+        subtitles = self.subtitle_manager.get_subtitles()
         
         self.render_btn.config(state="disabled")
         self.status_label.config(text="Renderizando... Aguarde.")
         
         # Rodar em thread para não travar a UI
-        threading.Thread(target=self.run_render, args=(input_path, output_folder, style, color)).start()
+        threading.Thread(target=self.run_render, args=(input_path, output_folder, style, color, subtitles, self.emoji_manager)).start()
 
-    def run_render(self, input_path, output_folder, style, color):
-        success, result = self.editor.render_video(input_path, output_folder, style, color)
+    def run_render(self, input_path, output_folder, style, color, subtitles, emoji_manager):
+        success, result = self.editor.render_video(input_path, output_folder, style, color, subtitles, emoji_manager)
         
         if success:
             self.status_label.config(text=f"Concluído! Salvo em: {result}")

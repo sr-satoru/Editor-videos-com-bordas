@@ -4,12 +4,12 @@ from tkinter import ttk
 from ui.preview import Preview
 from ui.video_controls import VideoControls
 from ui.borders import VideoBorders
-from ui.subtitles_added import SubtitlesAdded
 from ui.subtitles import Subtitles
 from ui.audio import AudioSettings
-from ui.emojis import EmojiSystem
 from ui.output import OutputVideo
 from ui.footer import Footer
+
+from modules.subtitle_manager import SubtitleManager, EmojiManager
 
 class EditorUI(tk.Tk):
     def __init__(self):
@@ -72,15 +72,19 @@ class EditorUI(tk.Tk):
             canvas.unbind_all("<Button-5>")
         ))
 
+        # ================== MANAGERS ==================
+        subtitle_manager = SubtitleManager()
+        emoji_manager = EmojiManager()
+
         # ================== MÓDULOS ==================
         preview = Preview(scroll_frame)  # Apenas o canvas do preview
         video_controls = VideoControls(scroll_frame, self.processar_pasta_var, preview.canvas)  # Botão seleciona vídeo
-        video_borders = VideoBorders(scroll_frame, video_controls)
-        Subtitles(scroll_frame)
-        EmojiSystem(scroll_frame)
-        SubtitlesAdded(scroll_frame)
+        video_borders = VideoBorders(scroll_frame, video_controls, subtitle_manager, emoji_manager)
+        
+        subtitles_ui = Subtitles(scroll_frame, subtitle_manager, emoji_manager, video_controls, video_borders)
+        
         AudioSettings(scroll_frame)
-        OutputVideo(scroll_frame, video_controls, video_borders)
+        OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager)
 
 
 if __name__ == "__main__":

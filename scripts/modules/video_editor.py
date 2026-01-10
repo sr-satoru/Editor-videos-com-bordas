@@ -1,6 +1,8 @@
 import moviepy.editor as mp
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw
+from modules.subtitle_manager import SubtitleRenderer, EmojiManager
 
 class VideoEditor:
     def __init__(self):
@@ -145,44 +147,113 @@ class VideoEditor:
             
         return final
 
-    def generate_preview_image(self, video_path, style, border_color="white"):
+    def generate_base_preview(self, video_path, style, border_color="white"):
         """
-        Gera uma imagem de preview (frame 0) com o estilo aplicado.
-        Retorna um objeto PIL Image ou numpy array.
+        Gera o frame base do preview (sem legendas).
+        Retorna um numpy array.
         """
         try:
-            # Carregar apenas um frame ou clip curto para preview
             clip = mp.VideoFileClip(video_path)
-            # Cortar para 1 frame para processamento rápido? 
-            # Mas CompositeVideoClip precisa de duração.
-            # Vamos pegar um subclip de 0.1s
             subclip = clip.subclip(0, 0.1)
-            
             final_clip = self.create_composition(subclip, style, border_color)
-            
-            # Pegar o frame 0
             frame = final_clip.get_frame(0)
             
-            # Fechar clips
             clip.close()
             final_clip.close()
+            return frame
+        except Exception as e:
+            print(f"Erro ao gerar base preview: {e}")
+            return None
+
+    def generate_preview_image(self, video_path, style, border_color="white", subtitles=None, emoji_manager=None, base_frame=None):
+        """
+        Gera uma imagem de preview. Se base_frame for fornecido, usa ele em vez de gerar do zero.
+        """
+        try:
+            if base_frame is not None:
+                frame = base_frame.copy()
+            else:
+                frame = self.generate_base_preview(video_path, style, border_color)
+                if frame is None: return None
+            
+            # Se houver legendas, desenhar
+            if subtitles and emoji_manager:
+                renderer = SubtitleRenderer(emoji_manager)
+                
+                # Converte para PIL
+                image = Image.fromarray(frame)
+                draw = ImageDraw.Draw(image)
+                
+                w, h = image.size
+                
+                # Desenha cada legenda
+                for sub in subtitles:
+                    # Escala baseada na largura (assumindo 1080p como base)
+                    # O VideoEditor usa w / 270.0 para renderizar no preview
+                    render_scale = w / 270.0 
+                    
+                    renderer.draw_subtitle(draw, sub, scale_factor=render_scale, emoji_scale=1.0)
+                
+                frame = np.array(image)
             
             return frame
         except Exception as e:
             print(f"Erro ao gerar preview: {e}")
             return None
 
-    def render_video(self, input_path, output_path, style, border_color="white"):
+    def render_video(self, input_path, output_path, style, border_color="white", subtitles=None, emoji_manager=None):
         """
-        Renderiza o vídeo final com os efeitos aplicados.
+        Renderiza o vídeo final com os efeitos aplicados e legendas.
         """
         try:
             clip = mp.VideoFileClip(input_path)
-            final_clip = self.create_composition(clip, style, border_color)
             
+            # 1. Aplicar efeitos de borda/fundo
+            # create_composition retorna um CompositeVideoClip
+            # Mas para desenhar legendas frame a frame com PIL, precisamos de um VideoClip genérico ou processar o Composite.
+            # O ideal é processar o Composite e DEPOIS desenhar as legendas.
+            
+            base_clip = self.create_composition(clip, style, border_color)
+            
+            # Se houver legendas, criar um novo clip com as legendas desenhadas
+            if subtitles and emoji_manager:
+                renderer = SubtitleRenderer(emoji_manager)
+                
+                # Dimensões finais
+                w, h = base_clip.size
+                
+                def make_frame_with_subtitles(t):
+                    frame = base_clip.get_frame(t)
+                    
+                    # Converte para PIL
+                    image = Image.fromarray(frame)
+                    draw = ImageDraw.Draw(image)
+                    
+                    # Desenha cada legenda
+                    for sub in subtitles:
+                        # Escala baseada na largura (assumindo 1080p como base se as coords forem relativas a 1080p)
+                        # Se as coords já forem para 1080p, scale_factor = 1.0 se w=1080
+                        scale_factor = w / 1080.0 if w != 1080 else 1.0
+                        # Mas o simples.py usava 270 como base para preview e 1080 para render.
+                        # Aqui vamos assumir que as coordenadas passadas já são para a resolução final ou ajustadas.
+                        # Se o UI passar coordenadas de preview (270p), precisamos escalar.
+                        # Vamos assumir que o UI passa coordenadas normalizadas ou o render ajusta.
+                        # No simples.py, ele recalculava scale_factor = output_width / 270.
+                        # Vamos assumir que 'subtitles' tem coordenadas baseadas em 270p (preview) e escalar.
+                        
+                        render_scale = w / 270.0 # Se as coords vem do preview 270p
+                        
+                        renderer.draw_subtitle(draw, sub, scale_factor=render_scale, emoji_scale=1.0)
+                    
+                    return np.array(image)
+                
+                final_clip = mp.VideoClip(make_frame=make_frame_with_subtitles, duration=base_clip.duration)
+                final_clip = final_clip.set_audio(base_clip.audio)
+                final_clip = final_clip.set_fps(clip.fps if clip.fps else 30)
+            else:
+                final_clip = base_clip
+
             # Definir nome do arquivo de saída
-            # Se output_path for diretório, criar nome. Se for arquivo, usar nome.
-            # Assumindo que output_path vem do OutputVideo e é uma pasta (baseado no código atual)
             import os
             filename = os.path.basename(input_path)
             name, ext = os.path.splitext(filename)
@@ -194,11 +265,12 @@ class VideoEditor:
                 codec="libx264",
                 audio_codec="aac",
                 fps=30,
-                preset="medium", # Bom balanço entre velocidade e qualidade
+                preset="medium",
                 threads=4
             )
             
             clip.close()
+            base_clip.close()
             final_clip.close()
             return True, output_file
         except Exception as e:
