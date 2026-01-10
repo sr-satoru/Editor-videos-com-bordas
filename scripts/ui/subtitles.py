@@ -62,8 +62,7 @@ class Subtitles(ttk.Frame):
         # Botões de Ação Rápida
         btn_row = ttk.Frame(self)
         btn_row.pack(fill="x", padx=10, pady=5)
-        ttk.Button(btn_row, text="➕ Adicionar Legenda", command=self.add_subtitle).pack(side="left", fill="x", expand=True, padx=(0, 5))
-        ttk.Button(btn_row, text="🎯 Centralizar", command=self.center_selected_subtitle).pack(side="left", fill="x", expand=True)
+        ttk.Button(btn_row, text="➕ Adicionar Legenda", command=self.add_subtitle).pack(side="left", fill="x", expand=True)
 
         # 2. Componente de Emojis
         self.comp_emojis = ComponenteEmojis(self, self.emoji_manager, callback_inserir=self.inserir_tag_emoji)
@@ -139,11 +138,6 @@ class Subtitles(ttk.Frame):
                 self.comp_lista.set_selection(new_idx)
                 self.selected_subtitle_idx = new_idx
                 self.update_preview()
-
-    def center_selected_subtitle(self):
-        if self.selected_subtitle_idx is not None:
-            self.subtitle_manager.update_subtitle(self.selected_subtitle_idx, x=135, y=480)
-            self.update_preview()
 
     def on_preview_double_click(self, event):
         if self.selected_subtitle_idx is not None:
