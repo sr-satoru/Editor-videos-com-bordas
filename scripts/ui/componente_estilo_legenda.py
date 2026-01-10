@@ -11,7 +11,7 @@ class ComponenteEstiloLegenda(ttk.LabelFrame):
         
         # Variáveis de estado
         self.font_family = tk.StringVar(value="Arial Black")
-        self.font_size = tk.IntVar(value=40)
+        self.font_size = tk.IntVar(value=18)
         self.font_color = tk.StringVar(value="#FFFFFF")
         self.border_color = tk.StringVar(value="#000000")
         self.bg_color = tk.StringVar(value="")
@@ -77,7 +77,7 @@ class ComponenteEstiloLegenda(ttk.LabelFrame):
 
     def set_state(self, state):
         self.font_family.set(state.get("font", "Arial Black"))
-        self.font_size.set(state.get("size", 40))
+        self.font_size.set(state.get("size", 18))
         self.font_color.set(state.get("color", "#FFFFFF"))
         self.border_color.set(state.get("border", "#000000"))
         self.bg_color.set(state.get("bg", ""))
