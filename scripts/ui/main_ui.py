@@ -74,13 +74,13 @@ class EditorUI(tk.Tk):
 
         # ================== MÓDULOS ==================
         preview = Preview(scroll_frame)  # Apenas o canvas do preview
-        VideoControls(scroll_frame, self.processar_pasta_var, preview.canvas)  # Botão seleciona vídeo
-        VideoBorders(scroll_frame)
+        video_controls = VideoControls(scroll_frame, self.processar_pasta_var, preview.canvas)  # Botão seleciona vídeo
+        video_borders = VideoBorders(scroll_frame, video_controls)
         Subtitles(scroll_frame)
         EmojiSystem(scroll_frame)
         SubtitlesAdded(scroll_frame)
         AudioSettings(scroll_frame)
-        OutputVideo(scroll_frame)
+        OutputVideo(scroll_frame, video_controls, video_borders)
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ class VideoSelector:
 
         # Variável para armazenar a imagem do preview
         self.preview_image = None
+        self.current_video_path = None
 
     def select_video(self):
         # Abre diálogo para escolher vídeo
@@ -27,6 +28,7 @@ class VideoSelector:
             return
 
         # Carrega o vídeo usando moviepy
+        self.current_video_path = filepath
         clip = VideoFileClip(filepath)
 
         # Pega o primeiro frame como preview

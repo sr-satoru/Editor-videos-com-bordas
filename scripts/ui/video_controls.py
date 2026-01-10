@@ -8,7 +8,7 @@ class VideoControls(ttk.LabelFrame):
         self.pack(fill="x", pady=10)
 
         # Botão de selecionar vídeo
-        VideoSelector(self, preview_canvas)
+        self.video_selector = VideoSelector(self, preview_canvas)
 
         # Checkbox de processar toda a pasta
         ttk.Checkbutton(
