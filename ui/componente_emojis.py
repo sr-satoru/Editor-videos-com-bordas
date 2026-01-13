@@ -16,6 +16,16 @@ class ComponenteEmojis(ttk.LabelFrame):
         self.emoji_folder_path = None
         
         self.setup_ui()
+        
+        # Tenta detectar automaticamente a pasta de emojis
+        self.auto_load_emojis()
+
+    def auto_load_emojis(self):
+        """Tenta carregar emojis automaticamente da pasta detectada"""
+        auto_folder = self.emoji_manager.auto_detect_folder()
+        if auto_folder:
+            self.emoji_folder_label.config(text=f"📂 {os.path.basename(auto_folder)} (auto-detectado)")
+            self.load_emojis(auto_folder)
 
     def setup_ui(self):
         emoji_top = ttk.Frame(self)
@@ -44,7 +54,7 @@ class ComponenteEmojis(ttk.LabelFrame):
     def select_emoji_folder(self):
         folder = filedialog.askdirectory()
         if folder:
-            self.emoji_folder_label.config(text=os.path.basename(folder))
+            self.emoji_folder_label.config(text=f"📁 {os.path.basename(folder)} (manual)")
             self.load_emojis(folder)
 
     def load_emojis(self, folder):
@@ -81,7 +91,12 @@ class ComponenteEmojis(ttk.LabelFrame):
     def set_state(self, state):
         folder = state.get("folder")
         if folder and os.path.exists(folder):
-            self.emoji_folder_label.config(text=os.path.basename(folder))
+            # Verifica se é a pasta auto-detectada
+            auto_folder = self.emoji_manager.auto_detect_folder()
+            if auto_folder and os.path.abspath(folder) == os.path.abspath(auto_folder):
+                self.emoji_folder_label.config(text=f"📂 {os.path.basename(folder)} (auto-detectado)")
+            else:
+                self.emoji_folder_label.config(text=f"📁 {os.path.basename(folder)} (manual)")
             self.load_emojis(folder)
         
         self.emoji_scale.set(state.get("scale", 1.0))
