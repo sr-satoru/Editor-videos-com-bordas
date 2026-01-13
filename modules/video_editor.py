@@ -187,7 +187,7 @@ class VideoEditor:
             print(f"Erro ao gerar base preview: {e}")
             return None
 
-    def generate_preview_image(self, video_path, style, border_color="white", subtitles=None, emoji_manager=None, base_frame=None, border_size_preview=14):
+    def generate_preview_image(self, video_path, style, border_color="white", subtitles=None, emoji_manager=None, base_frame=None, border_size_preview=14, watermark_data=None):
         """
         Gera uma imagem de preview.
         """
@@ -215,6 +215,10 @@ class VideoEditor:
                     emoji_scale=1.0 # Padrão para preview do editor
                 )
             
+            # Desenhar marca d'água se houver
+            if watermark_data and watermark_data.get("add_text_mark"):
+                renderer._draw_watermark(draw, watermark_data, scale_factor, offset_x, offset_y)
+            
             return np.array(image)
         else:
             # Gera do zero
@@ -238,7 +242,8 @@ class VideoEditor:
                     border_color,
                     style,
                     background_frame=bg_frame,
-                    is_preview=True
+                    is_preview=True,
+                    watermark_data=watermark_data
                 )
                 clip.close()
                 return final_frame
@@ -246,7 +251,7 @@ class VideoEditor:
                 print(f"Erro ao gerar preview: {e}")
                 return None
 
-    def render_video(self, input_path, output_path, style, border_color="white", subtitles=None, emoji_manager=None, audio_settings=None):
+    def render_video(self, input_path, output_path, style, border_color="white", subtitles=None, emoji_manager=None, audio_settings=None, watermark_data=None):
         """
         Renderiza o vídeo final usando o VideoRenderer.
         """
@@ -263,6 +268,7 @@ class VideoEditor:
             border_color,
             style,
             subtitles,
-            audio_settings=audio_settings
+            audio_settings=audio_settings,
+            watermark_data=watermark_data
         )
         return success, result

@@ -228,10 +228,12 @@ class EditorUI(tk.Tk):
         
         subtitles_ui = Subtitles(scroll_frame, subtitle_manager, emoji_manager, video_controls, video_borders)
         
-        watermark_ui = WatermarkUI(scroll_frame)
+        watermark_ui = WatermarkUI(scroll_frame, video_controls, subtitle_manager, emoji_manager, video_borders)
+        watermark_ui.subtitles_ui = subtitles_ui  # Referência para disparar preview
+        subtitles_ui.watermark_ui = watermark_ui  # Referência para ler dados da marca d'água
         
         audio_settings = AudioSettings(scroll_frame)
-        output_video = OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings, processar_pasta_var=self.processar_pasta_var)
+        output_video = OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings, watermark_ui, processar_pasta_var=self.processar_pasta_var)
         
         self.tabs_data.append({
             'frame': new_tab,

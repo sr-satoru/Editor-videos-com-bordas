@@ -34,6 +34,12 @@ class Subtitles(ttk.Frame):
         self.drag_offset_x = 0
         self.drag_offset_y = 0
         self.subtitle_bbox_cache = []
+        
+        # Estado de Drag-and-Drop para Marca d'Água
+        self.dragging_watermark = False
+        self.selected_watermark = False
+        self.watermark_bbox_cache = None
+        
         self.last_preview_params = None
         self.cached_preview_base = None
         
@@ -210,6 +216,24 @@ class Subtitles(ttk.Frame):
                 canvas_bbox = (bbox[0] + img_x, bbox[1] + img_y, bbox[2] + img_x, bbox[3] + img_y)
                 self.subtitle_bbox_cache.append(canvas_bbox)
 
+            # --- Desenhar Marca d'Água em Texto ---
+            self.watermark_bbox_cache = None
+            if hasattr(self, 'watermark_ui') and self.watermark_ui:
+                watermark_data = self.watermark_ui.get_state()
+                if watermark_data.get("add_text_mark"):
+                    from modules.editar_com_legendas import VideoRenderer
+                    v_renderer = VideoRenderer(self.emoji_manager)
+                    v_renderer._draw_watermark(draw, watermark_data, scale, offset_x, offset_y)
+                    
+                    # Cache do BBox para interação
+                    bbox = v_renderer.get_watermark_bbox(watermark_data, scale, offset_x, offset_y)
+                    if bbox:
+                        if self.selected_watermark or self.dragging_watermark:
+                            draw.rectangle(bbox, outline="cyan", width=2)
+                        
+                        # Ajustar para coordenadas do Canvas
+                        self.watermark_bbox_cache = (bbox[0] + img_x, bbox[1] + img_y, bbox[2] + img_x, bbox[3] + img_y)
+
             self.preview_image_tk = ImageTk.PhotoImage(img)
             canvas.delete("all")
             canvas.create_image(preview_w//2, preview_h//2, image=self.preview_image_tk, anchor="center")
@@ -242,9 +266,42 @@ class Subtitles(ttk.Frame):
                 self.drag_offset_y = click_video_y - (sub["y"] + border_offset_y)
                 
                 self.comp_lista.set_selection(i)
+                self.selected_watermark = False
                 self.update_preview()
                 return
+        
+        # Se não clicou em legenda, verificar marca d'água
+        if self.watermark_bbox_cache:
+            bbox = self.watermark_bbox_cache
+            if bbox[0] <= x <= bbox[2] and bbox[1] <= y <= bbox[3]:
+                self.dragging_watermark = True
+                self.selected_watermark = True
+                self.selected_subtitle_idx = None
+                
+                watermark_data = self.watermark_ui.get_state()
+                scale = self.preview_scale_factor
+                style = self.video_borders.get_effective_style()
+                style_lower = style.lower()
+                border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
+                
+                if border_enabled:
+                    v_w_preview = 360.0 * 0.78
+                    v_h_preview = 640.0 * 0.70
+                    border_offset_x = (360.0 - v_w_preview) / 2
+                    border_offset_y = (640.0 - v_h_preview) / 2
+                else:
+                    border_offset_x = 0
+                    border_offset_y = 0
+                
+                click_video_x, click_video_y = canvas_para_video(x, y, self.preview_img_geometry, scale)
+                self.drag_offset_x = click_video_x - (watermark_data["x"] + border_offset_x)
+                self.drag_offset_y = click_video_y - (watermark_data["y"] + border_offset_y)
+                
+                self.update_preview()
+                return
+
         self.selected_subtitle_idx = None
+        self.selected_watermark = False
         self.update_preview()
 
     def on_preview_drag(self, event):
@@ -269,9 +326,30 @@ class Subtitles(ttk.Frame):
             
             self.subtitle_manager.update_subtitle(self.dragging_subtitle_idx, x=int(new_video_x), y=int(new_video_y))
             self.update_preview()
+        elif self.dragging_watermark:
+            scale = self.preview_scale_factor
+            style = self.video_borders.get_effective_style()
+            style_lower = style.lower()
+            border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
+            
+            if border_enabled:
+                v_w_preview = 360.0 * 0.78
+                v_h_preview = 640.0 * 0.70
+                border_offset_x = (360.0 - v_w_preview) / 2
+                border_offset_y = (640.0 - v_h_preview) / 2
+            else:
+                border_offset_x = 0
+                border_offset_y = 0
+            
+            new_render_x, new_render_y = canvas_para_video(event.x, event.y, self.preview_img_geometry, scale)
+            new_video_x = new_render_x - self.drag_offset_x - border_offset_x
+            new_video_y = new_render_y - self.drag_offset_y - border_offset_y
+            
+            self.watermark_ui.update_position(int(new_video_x), int(new_video_y))
 
     def on_preview_release(self, event):
         self.dragging_subtitle_idx = None
+        self.dragging_watermark = False
         self.update_preview()
     def get_state(self):
         return {

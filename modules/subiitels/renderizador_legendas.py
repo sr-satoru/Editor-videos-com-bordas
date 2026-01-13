@@ -59,8 +59,9 @@ class RenderizadorLegendas:
         emoji_pattern = r'\[EMOJI:([^\]]+)\]'
         lines = text.split('\n')
         line_height = font.size + int(5 * scale_factor)
-        total_height = len(lines) * line_height
-        start_y = y - total_height // 2
+        # Para centralizar corretamente com anchor="lm", o start_y deve ser o y menos
+        # metade do deslocamento total entre as linhas.
+        start_y = y - (len(lines) - 1) * line_height / 2
         
         line_widths = []
         for line in lines:
@@ -113,8 +114,8 @@ class RenderizadorLegendas:
         emoji_pattern = r'\[EMOJI:([^\]]+)\]'
         lines = text.split('\n')
         line_height = font.size + int(5 * scale_factor)
-        total_height = len(lines) * line_height
-        start_y = y - total_height // 2
+        # Mesma lógica de centralização do draw_subtitle
+        start_y = y - (len(lines) - 1) * line_height / 2
         
         max_w = 0
         min_y = float('inf')

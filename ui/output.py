@@ -7,7 +7,7 @@ from modules.process_pasta_var import FolderProcessor
 import threading
 
 class OutputVideo(ttk.LabelFrame):
-    def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings_ui, processar_pasta_var=None):
+    def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings_ui, watermark_ui, processar_pasta_var=None):
         super().__init__(parent, text="Salvar Vídeo Processado")
         self.pack(fill="x", pady=10)
         
@@ -16,6 +16,7 @@ class OutputVideo(ttk.LabelFrame):
         self.subtitle_manager = subtitle_manager
         self.emoji_manager = emoji_manager
         self.audio_settings_ui = audio_settings_ui
+        self.watermark_ui = watermark_ui
         self.processar_pasta_var = processar_pasta_var
         self.editor = VideoEditor()
         self.folder_processor = FolderProcessor(self.editor)
@@ -70,6 +71,8 @@ class OutputVideo(ttk.LabelFrame):
             'audio_folder': self.audio_settings_ui.audio_folder_path.get()
         }
         
+        watermark_data = self.watermark_ui.get_state() if self.watermark_ui else None
+        
         self.render_btn.config(state="disabled")
         
         if self.processar_pasta_var and self.processar_pasta_var.get():
@@ -84,7 +87,8 @@ class OutputVideo(ttk.LabelFrame):
                 audio_settings,
                 status_callback=lambda msg: self.status_label.config(text=msg),
                 completion_callback=self.on_folder_process_complete,
-                process_all_folder=True
+                process_all_folder=True,
+                watermark_data=watermark_data
             )
         else:
             self.status_label.config(text="Adicionado à fila de renderização...")
@@ -99,7 +103,8 @@ class OutputVideo(ttk.LabelFrame):
                 audio_settings,
                 status_callback=lambda msg: self.status_label.config(text=msg),
                 completion_callback=lambda s, t, e: self.render_btn.config(state="normal"),
-                process_all_folder=False
+                process_all_folder=False,
+                watermark_data=watermark_data
             )
         
         # O botão volta ao normal via callback ou quando a fila termina

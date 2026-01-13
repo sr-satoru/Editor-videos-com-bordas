@@ -111,11 +111,12 @@ class VideoRenderer:
                     pixels[x, y] = (r, g, b)
         return image
 
-    def render_frame(self, video_frame, subtitles, border_enabled, border_size_preview, border_color, border_style, emoji_scale=1.0, background_frame=None, is_preview=False):
+    def render_frame(self, video_frame, subtitles, border_enabled, border_size_preview, border_color, border_style, emoji_scale=1.0, background_frame=None, is_preview=False, watermark_data=None):
         """
-        Renderiza um único frame com bordas e legendas.
+        Renderiza um único frame com bordas, legendas e marca d'água.
         video_frame: numpy array do frame do vídeo (já redimensionado para a área interna)
         background_frame: numpy array do frame de fundo (opcional, usado para blur)
+        watermark_data: dicionário com as configurações da marca d'água
         """
         video_image = Image.fromarray(video_frame.astype(np.uint8))
         scale_factor = self.get_scale_factor()
@@ -172,7 +173,6 @@ class VideoRenderer:
         if subtitles:
             draw = ImageDraw.Draw(final_image)
             for sub in subtitles:
-                # Desenha usando o renderer comum com a escala de output e offset da borda
                 self.subtitle_renderer.draw_subtitle(
                     draw, 
                     sub, 
@@ -182,9 +182,70 @@ class VideoRenderer:
                     offset_y=offset_y
                 )
                 
+        # 3. Desenhar marca d'água em texto
+        if watermark_data and watermark_data.get("add_text_mark"):
+            draw = ImageDraw.Draw(final_image)
+            self._draw_watermark(draw, watermark_data, scale_factor, offset_x, offset_y)
+                
         return np.array(final_image)
 
-    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=4, audio_settings=None):
+    def _draw_watermark(self, draw, data, scale_factor, offset_x, offset_y):
+        """Desenha a marca d'água de texto usando o mesmo renderer das legendas"""
+        text = data.get("text_mark", "")
+        if not text:
+            return
+
+        # Converter dados da marca d'água para o formato de legenda esperado pelo renderer
+        hex_color = data.get("text_color", "#FFFFFF")
+        opacity = data.get("opacity", 100) / 100.0
+        
+        # Converter hex para RGB e adicionar alpha
+        hex_color = hex_color.lstrip('#')
+        rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        rgba_color = (*rgb, int(255 * opacity))
+
+        sub_format = {
+            "text": text,
+            "x": data.get("x", 135),
+            "y": data.get("y", 400),
+            "font": data.get("font", "Arial"),
+            "size": data.get("font_size", 30),
+            "color": rgba_color,
+            "border": None,
+            "bg": None,
+            "border_thickness": 0
+        }
+
+        self.subtitle_renderer.draw_subtitle(
+            draw, 
+            sub_format, 
+            scale_factor=scale_factor, 
+            offset_x=offset_x, 
+            offset_y=offset_y
+        )
+
+    def get_watermark_bbox(self, data, scale_factor, offset_x, offset_y):
+        """Calcula o bounding box da marca d'água usando o mesmo renderer das legendas"""
+        text = data.get("text_mark", "")
+        if not text:
+            return None
+
+        sub_format = {
+            "text": text,
+            "x": data.get("x", 135),
+            "y": data.get("y", 400),
+            "font": data.get("font", "Arial"),
+            "size": data.get("font_size", 30)
+        }
+
+        return self.subtitle_renderer.get_subtitle_bbox(
+            sub_format, 
+            scale_factor=scale_factor, 
+            offset_x=offset_x, 
+            offset_y=offset_y
+        )
+
+    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=4, audio_settings=None, watermark_data=None):
         """Renderiza o vídeo completo"""
         try:
             clip = mp.VideoFileClip(input_path)
@@ -243,7 +304,8 @@ class VideoRenderer:
                     border_color, 
                     border_style,
                     emoji_scale,
-                    background_frame=bg_frame
+                    background_frame=bg_frame,
+                    watermark_data=watermark_data
                 )
             
             fps = clip.fps if clip.fps else 30.0
@@ -278,6 +340,21 @@ class VideoRenderer:
             video_resized.close()
             if background_clip:
                 background_clip.close()
+            
+            # 3. Adicionar Vídeo Final (Concatenação)
+            if watermark_data and watermark_data.get("add_final_video"):
+                video_final_path = watermark_data.get("video_path")
+                if video_final_path and os.path.exists(video_final_path):
+                    try:
+                        final_video_clip = mp.VideoFileClip(video_final_path)
+                        final_video_clip = final_video_clip.resize(newsize=(self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT))
+                        
+                        # Concatenar
+                        concatenated = mp.concatenate_videoclips([final_clip, final_video_clip])
+                        final_clip = concatenated
+                    except Exception as e:
+                        print(f"Erro ao concatenar vídeo final: {e}")
+
             final_clip.close()
 
             # Tentar remover a pasta temp se estiver vazia
