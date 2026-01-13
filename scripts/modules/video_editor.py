@@ -155,13 +155,13 @@ class VideoEditor:
             
         return final
 
-    def generate_base_preview(self, video_path, style, border_color="white"):
+    def generate_base_preview(self, video_path, style, border_color="white", border_size_preview=14):
         """
         Gera o frame base do preview (sem legendas).
         """
         renderer = VideoRenderer(None)
-        border_enabled = "Moldura" in style
-        border_size_preview = 50 if border_enabled else 0
+        style_lower = style.lower()
+        border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
         
         try:
             clip = mp.VideoFileClip(video_path)
@@ -200,7 +200,8 @@ class VideoEditor:
             draw = ImageDraw.Draw(image)
             
             # Precisamos do offset da borda para as legendas
-            _, _, scaled_border = renderer.calculate_video_dimensions(border_enabled, border_size_preview)
+            v_w, v_h, _ = renderer.calculate_video_dimensions(border_enabled, border_size_preview)
+            offset_x, offset_y = renderer.get_offsets(v_w, v_h)
             scale_factor = renderer.get_scale_factor()
 
             for sub in (subtitles or []):
@@ -208,8 +209,8 @@ class VideoEditor:
                     draw, 
                     sub,
                     scale_factor=scale_factor,
-                    offset_x=scaled_border if border_enabled else 0,
-                    offset_y=scaled_border if border_enabled else 0,
+                    offset_x=offset_x,
+                    offset_y=offset_y,
                     emoji_scale=1.0 # Padrão para preview do editor
                 )
             

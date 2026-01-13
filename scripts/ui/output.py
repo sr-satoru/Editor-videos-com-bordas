@@ -3,10 +3,11 @@ from tkinter import ttk, filedialog
 
 from tkinter import messagebox
 from modules.video_editor import VideoEditor
+from modules.process_pasta_var import FolderProcessor
 import threading
 
 class OutputVideo(ttk.LabelFrame):
-    def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings_ui):
+    def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings_ui, processar_pasta_var=None):
         super().__init__(parent, text="Salvar Vídeo Processado")
         self.pack(fill="x", pady=10)
         
@@ -15,7 +16,9 @@ class OutputVideo(ttk.LabelFrame):
         self.subtitle_manager = subtitle_manager
         self.emoji_manager = emoji_manager
         self.audio_settings_ui = audio_settings_ui
+        self.processar_pasta_var = processar_pasta_var
         self.editor = VideoEditor()
+        self.folder_processor = FolderProcessor(self.editor)
 
         self.output_path = tk.StringVar()
 
@@ -63,14 +66,55 @@ class OutputVideo(ttk.LabelFrame):
             'remove_audio': self.audio_settings_ui.remove_audio_var.get(),
             'use_folder_audio': self.audio_settings_ui.use_folder_audio_var.get() or self.audio_settings_ui.select_folder_audio_var.get(),
             'random_mode': self.audio_settings_ui.use_folder_audio_var.get(),
+            'sync_duration': self.audio_settings_ui.sync_duration_var.get(),
             'audio_folder': self.audio_settings_ui.audio_folder_path.get()
         }
         
         self.render_btn.config(state="disabled")
-        self.status_label.config(text="Renderizando... Aguarde.")
         
-        # Rodar em thread para não travar a UI
-        threading.Thread(target=self.run_render, args=(input_path, output_folder, style, color, subtitles, self.emoji_manager, audio_settings)).start()
+        if self.processar_pasta_var and self.processar_pasta_var.get():
+            self.status_label.config(text="Iniciando processamento da pasta...")
+            self.folder_processor.process_folder(
+                input_path, 
+                output_folder, 
+                style, 
+                color, 
+                subtitles, 
+                self.emoji_manager, 
+                audio_settings,
+                status_callback=lambda msg: self.status_label.config(text=msg),
+                completion_callback=self.on_folder_process_complete,
+                process_all_folder=True
+            )
+        else:
+            self.status_label.config(text="Adicionado à fila de renderização...")
+            # Usar a mesma lógica de fila para vídeo individual
+            self.folder_processor.process_folder(
+                input_path, 
+                output_folder, 
+                style, 
+                color, 
+                subtitles, 
+                self.emoji_manager, 
+                audio_settings,
+                status_callback=lambda msg: self.status_label.config(text=msg),
+                completion_callback=lambda s, t, e: self.render_btn.config(state="normal"),
+                process_all_folder=False
+            )
+        
+        # O botão volta ao normal via callback ou quando a fila termina
+        # Para simplificar, vamos deixar o botão habilitado para permitir enfileirar mais
+        self.render_btn.config(state="normal")
+
+    def on_folder_process_complete(self, success_count, total, errors):
+        self.render_btn.config(state="normal")
+        if errors:
+            error_msg = "\n".join(errors[:5])
+            if len(errors) > 5:
+                error_msg += f"\n... e mais {len(errors)-5} erros."
+            messagebox.showwarning("Processamento Concluído", f"Processados {success_count} de {total} vídeos.\n\nErros:\n{error_msg}")
+        else:
+            messagebox.showinfo("Sucesso", f"Todos os {total} vídeos foram processados com sucesso!")
 
     def run_render(self, input_path, output_folder, style, color, subtitles, emoji_manager, audio_settings):
         success, result = self.editor.render_video(input_path, output_folder, style, color, subtitles, emoji_manager, audio_settings)

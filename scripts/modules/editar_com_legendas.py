@@ -58,6 +58,12 @@ class VideoRenderer:
             
         return video_width, video_height, scaled_border_size
 
+    def get_offsets(self, v_w, v_h):
+        """Retorna os offsets X e Y para centralizar o vídeo no fundo 1080x1920"""
+        offset_x = (self.OUTPUT_WIDTH - v_w) // 2
+        offset_y = (self.OUTPUT_HEIGHT - v_h) // 2
+        return offset_x, offset_y
+
     def create_background(self, style, border_color, duration, background_frame=None):
         """Cria o frame de fundo baseado no estilo"""
         if background_frame is not None and "blur" in (style or "").lower():
@@ -110,14 +116,20 @@ class VideoRenderer:
         video_image = Image.fromarray(video_frame.astype(np.uint8))
         scale_factor = self.get_scale_factor()
         
-        # 1. Calcular dimensões e criar fundo
-        v_w, v_h, scaled_border = self.calculate_video_dimensions(border_enabled, border_size_preview)
-        
+        # Se o estilo for "Sem moldura", forçamos border_enabled para False para garantir
+        if border_style == "Sem moldura":
+            border_enabled = False
+
         if border_enabled:
+            # 1. Calcular dimensões
+            v_w, v_h, scaled_border = self.calculate_video_dimensions(border_enabled, border_size_preview)
+            
             # Fundo (Background)
             final_image = self.create_background(border_style, border_color, 0, background_frame=background_frame)
             
-            # Moldura (Frame) - Só adiciona se "Moldura" estiver no estilo
+            # Centralizar vídeo no fundo (ou na moldura)
+            paste_x, paste_y = self.get_offsets(v_w, v_h)
+
             if border_style and "Moldura" in border_style:
                 # O tamanho da moldura é o tamanho do vídeo + border_size em cada lado
                 frame_width = v_w + (scaled_border * 2)
@@ -137,14 +149,10 @@ class VideoRenderer:
                 frame_y = (self.OUTPUT_HEIGHT - frame_height) // 2
                 final_image.paste(frame_image, (frame_x, frame_y))
                 
-                # Centralizar vídeo na moldura
-                paste_x = frame_x + scaled_border
-                paste_y = frame_y + scaled_border
+                # O vídeo já está centralizado via paste_x, paste_y
                 final_image.paste(video_image, (paste_x, paste_y))
             else:
                 # Sem moldura, apenas centraliza o vídeo no fundo
-                paste_x = (self.OUTPUT_WIDTH - v_w) // 2
-                paste_y = (self.OUTPUT_HEIGHT - v_h) // 2
                 final_image.paste(video_image, (paste_x, paste_y))
             
             # O offset para as legendas deve ser relativo ao canto superior esquerdo da imagem final
@@ -184,16 +192,24 @@ class VideoRenderer:
                 use_folder_audio = audio_settings.get('use_folder_audio', False)
                 random_mode = audio_settings.get('random_mode', False)
                 audio_folder = audio_settings.get('audio_folder', "")
+                sync_duration = audio_settings.get('sync_duration', False)
 
                 if use_folder_audio and audio_folder:
                     audio_path = self.audio_manager.get_next_audio(audio_folder, random_mode=random_mode)
                     if audio_path:
                         new_audio = mp.AudioFileClip(audio_path)
-                        # Ajustar duração do áudio se necessário (loop ou corte)
-                        if new_audio.duration < clip.duration:
-                            final_audio = mp.afx.audio_loop(new_audio, duration=clip.duration)
+                        
+                        if sync_duration:
+                            # Sincronizar duração: corta o vídeo para o tamanho do áudio (se menor)
+                            target_duration = min(clip.duration, new_audio.duration)
+                            clip = clip.subclip(0, target_duration)
+                            final_audio = new_audio.subclip(0, target_duration)
                         else:
-                            final_audio = new_audio.set_duration(clip.duration)
+                            # Ajustar duração do áudio se necessário (loop ou corte)
+                            if new_audio.duration < clip.duration:
+                                final_audio = mp.afx.audio_loop(new_audio, duration=clip.duration)
+                            else:
+                                final_audio = new_audio.set_duration(clip.duration)
                     elif remove_audio:
                         final_audio = None
                 elif remove_audio:
@@ -232,7 +248,14 @@ class VideoRenderer:
             
             if final_audio:
                 final_clip = final_clip.set_audio(final_audio)
-                
+
+            # Garantir que o diretório de saída exista
+            os.makedirs(output_folder, exist_ok=True)
+            
+            # Criar pasta temp física dentro da pasta de saída
+            temp_dir = os.path.join(output_folder, "temp")
+            os.makedirs(temp_dir, exist_ok=True)
+            
             base_name = os.path.splitext(os.path.basename(input_path))[0]
             output_path = os.path.join(output_folder, f"{base_name}_render.mp4")
             
@@ -242,7 +265,9 @@ class VideoRenderer:
                 audio_codec="aac",
                 fps=fps,
                 threads=threads,
-                preset="medium"
+                preset="medium",
+                temp_audiofile=os.path.join(temp_dir, f"{base_name}_temp_audio.m4a"),
+                remove_temp=True
             )
             
             clip.close()
@@ -250,6 +275,13 @@ class VideoRenderer:
             if background_clip:
                 background_clip.close()
             final_clip.close()
+
+            # Tentar remover a pasta temp se estiver vazia
+            try:
+                if os.path.exists(temp_dir) and not os.listdir(temp_dir):
+                    os.rmdir(temp_dir)
+            except:
+                pass
             
             return True, output_path
         except Exception as e:

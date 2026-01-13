@@ -152,6 +152,8 @@ class Subtitles(ttk.Frame):
         border_color = self.video_borders.border_color
         subtitles = self.subtitle_manager.get_subtitles()
         border_size_preview = self.video_borders.border_size_var.get()
+        
+        # Invalida o cache se o estilo ou cor mudar
         current_params = (video_path, style, border_color, border_size_preview)
         
         canvas = self.video_controls.video_selector.preview_canvas
@@ -159,7 +161,7 @@ class Subtitles(ttk.Frame):
         if preview_w < 10: preview_w, preview_h = 360, 640
 
         if not self.cached_preview_base or self.last_preview_params != current_params:
-            base_frame = self.editor.generate_base_preview(video_path, style, border_color)
+            base_frame = self.editor.generate_base_preview(video_path, style, border_color, border_size_preview=border_size_preview)
             if base_frame is not None:
                 img = Image.fromarray(base_frame)
                 img.thumbnail((preview_w, preview_h), Image.Resampling.LANCZOS)
@@ -178,11 +180,29 @@ class Subtitles(ttk.Frame):
             self.subtitle_bbox_cache = []
             img_x, img_y, _, _ = self.preview_img_geometry
             scale = self.preview_scale_factor
-            offset = (border_size_preview * scale if "Moldura" in style else 0)
+            
+            style_lower = style.lower()
+            border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
+            
+            if border_enabled:
+                # Usar as mesmas proporções do VideoRenderer
+                # VIDEO_WIDTH_RATIO = 0.78, VIDEO_HEIGHT_RATIO = 0.70
+                # No preview, a base é 270.0
+                v_w_preview = 270.0 * 0.78
+                v_h_preview = 480.0 * 0.70 # 480 é a altura base para 270 de largura (9:16)
+                
+                off_x_preview = (270.0 - v_w_preview) / 2
+                off_y_preview = (480.0 - v_h_preview) / 2
+                
+                offset_x = off_x_preview * scale
+                offset_y = off_y_preview * scale
+            else:
+                offset_x = 0
+                offset_y = 0
             
             for idx, sub in enumerate(subtitles):
-                self.renderer.draw_subtitle(draw, sub, scale_factor=scale, emoji_scale=self.comp_emojis.emoji_scale.get(), offset_x=offset, offset_y=offset)
-                bbox = self.renderer.get_subtitle_bbox(sub, scale_factor=scale, emoji_scale=self.comp_emojis.emoji_scale.get(), offset_x=offset, offset_y=offset)
+                self.renderer.draw_subtitle(draw, sub, scale_factor=scale, emoji_scale=self.comp_emojis.emoji_scale.get(), offset_x=offset_x, offset_y=offset_y)
+                bbox = self.renderer.get_subtitle_bbox(sub, scale_factor=scale, emoji_scale=self.comp_emojis.emoji_scale.get(), offset_x=offset_x, offset_y=offset_y)
                 
                 if idx == self.selected_subtitle_idx or idx == self.dragging_subtitle_idx:
                     draw.rectangle(bbox, outline="yellow", width=2)
@@ -205,11 +225,21 @@ class Subtitles(ttk.Frame):
                 sub = self.subtitle_manager.get_subtitles()[i]
                 scale = self.preview_scale_factor
                 style = self.video_borders.get_effective_style()
-                border_offset = (self.video_borders.border_size_var.get() if "Moldura" in style else 0)
+                style_lower = style.lower()
+                border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
+                
+                if border_enabled:
+                    v_w_preview = 270.0 * 0.78
+                    v_h_preview = 480.0 * 0.70
+                    border_offset_x = (270.0 - v_w_preview) / 2
+                    border_offset_y = (480.0 - v_h_preview) / 2
+                else:
+                    border_offset_x = 0
+                    border_offset_y = 0
                 
                 click_video_x, click_video_y = canvas_para_video(x, y, self.preview_img_geometry, scale)
-                self.drag_offset_x = click_video_x - (sub["x"] + border_offset)
-                self.drag_offset_y = click_video_y - (sub["y"] + border_offset)
+                self.drag_offset_x = click_video_x - (sub["x"] + border_offset_x)
+                self.drag_offset_y = click_video_y - (sub["y"] + border_offset_y)
                 
                 self.comp_lista.set_selection(i)
                 self.update_preview()
@@ -221,11 +251,21 @@ class Subtitles(ttk.Frame):
         if self.dragging_subtitle_idx is not None:
             scale = self.preview_scale_factor
             style = self.video_borders.get_effective_style()
-            border_offset = (self.video_borders.border_size_var.get() if "Moldura" in style else 0)
+            style_lower = style.lower()
+            border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
+            
+            if border_enabled:
+                v_w_preview = 270.0 * 0.78
+                v_h_preview = 480.0 * 0.70
+                border_offset_x = (270.0 - v_w_preview) / 2
+                border_offset_y = (480.0 - v_h_preview) / 2
+            else:
+                border_offset_x = 0
+                border_offset_y = 0
             
             new_render_x, new_render_y = canvas_para_video(event.x, event.y, self.preview_img_geometry, scale)
-            new_video_x = new_render_x - self.drag_offset_x - border_offset
-            new_video_y = new_render_y - self.drag_offset_y - border_offset
+            new_video_x = new_render_x - self.drag_offset_x - border_offset_x
+            new_video_y = new_render_y - self.drag_offset_y - border_offset_y
             
             self.subtitle_manager.update_subtitle(self.dragging_subtitle_idx, x=int(new_video_x), y=int(new_video_y))
             self.update_preview()

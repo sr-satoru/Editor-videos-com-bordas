@@ -1,3 +1,11 @@
 venv/ 
 old/
 __pycache__/
+scripts.zip
+scripts2
+exempla
+
+*.mp4
+*.zip
+*.pyc
+*.json

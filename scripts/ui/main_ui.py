@@ -215,7 +215,7 @@ class EditorUI(tk.Tk):
         subtitles_ui = Subtitles(scroll_frame, subtitle_manager, emoji_manager, video_controls, video_borders)
         
         audio_settings = AudioSettings(scroll_frame)
-        output_video = OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings)
+        output_video = OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings, processar_pasta_var=self.processar_pasta_var)
         
         self.tabs_data.append({
             'frame': new_tab,
