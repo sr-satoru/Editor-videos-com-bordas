@@ -8,6 +8,7 @@ from ui.subtitles import Subtitles
 from ui.audio import AudioSettings
 from ui.output import OutputVideo
 from ui.footer import Footer
+from ui.marca_da_agua import WatermarkUI
 import json
 from tkinter import filedialog, messagebox
 
@@ -34,7 +35,7 @@ class EditorUI(tk.Tk):
 
         # ---------- FOOTER ----------
         Footer(self, 
-               add_tab_callback=lambda: self.add_new_tab(f"Aba {len(self.notebook.tabs())+1}"),
+               add_tab_callback=self.add_new_tab_with_auto_name,
                remove_tab_callback=self.remove_current_tab,
                render_all_callback=self.render_all_tabs,
                save_callback=self.save_project,
@@ -84,6 +85,17 @@ class EditorUI(tk.Tk):
         if messagebox.askyesno("Confirmar", f"Deseja remover a aba '{self.notebook.tab(current_idx, 'text')}'?"):
             self.notebook.forget(current_idx)
             self.tabs_data.pop(current_idx)
+            self.update_tab_names()
+
+    def update_tab_names(self):
+        """Renomeia todas as abas sequencialmente"""
+        for i in range(self.notebook.index("end")):
+            self.notebook.tab(i, text=f"Aba {i + 1}")
+
+    def add_new_tab_with_auto_name(self):
+        """Helper para adicionar nova aba com o próximo nome disponível"""
+        next_idx = self.notebook.index("end") + 1
+        self.add_new_tab(f"Aba {next_idx}")
 
     def render_all_tabs(self):
         """Chama o render de todas as abas abertas"""
@@ -111,6 +123,7 @@ class EditorUI(tk.Tk):
                 "video_controls": tab['video_controls'].get_state(),
                 "borders": tab['borders'].get_state(),
                 "subtitles": tab['subtitles'].get_state(),
+                "watermark": tab['watermark'].get_state(),
                 "audio": tab['audio'].get_state(),
                 "output": tab['output'].get_state()
             }
@@ -157,6 +170,7 @@ class EditorUI(tk.Tk):
             current_tab['video_controls'].set_state(tab_state.get("video_controls", {}))
             current_tab['borders'].set_state(tab_state.get("borders", {}))
             current_tab['subtitles'].set_state(tab_state.get("subtitles", {}))
+            current_tab['watermark'].set_state(tab_state.get("watermark", {}))
             current_tab['audio'].set_state(tab_state.get("audio", {}))
             current_tab['output'].set_state(tab_state.get("output", {}))
 
@@ -214,6 +228,8 @@ class EditorUI(tk.Tk):
         
         subtitles_ui = Subtitles(scroll_frame, subtitle_manager, emoji_manager, video_controls, video_borders)
         
+        watermark_ui = WatermarkUI(scroll_frame)
+        
         audio_settings = AudioSettings(scroll_frame)
         output_video = OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings, processar_pasta_var=self.processar_pasta_var)
         
@@ -222,6 +238,7 @@ class EditorUI(tk.Tk):
             'video_controls': video_controls,
             'borders': video_borders,
             'subtitles': subtitles_ui,
+            'watermark': watermark_ui,
             'audio': audio_settings,
             'output': output_video
         })
