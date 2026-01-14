@@ -46,7 +46,7 @@ class OutputVideo(ttk.LabelFrame):
         if folder:
             self.output_path.set(folder)
 
-    def start_rendering(self):
+    def start_rendering(self, tab_number=None):
         input_path = self.video_controls.video_selector.current_video_path
         output_folder = self.output_path.get()
         
@@ -88,7 +88,8 @@ class OutputVideo(ttk.LabelFrame):
                 status_callback=lambda msg: self.status_label.config(text=msg),
                 completion_callback=self.on_folder_process_complete,
                 process_all_folder=True,
-                watermark_data=watermark_data
+                watermark_data=watermark_data,
+                tab_number=tab_number
             )
         else:
             self.status_label.config(text="Adicionado à fila de renderização...")
@@ -104,7 +105,8 @@ class OutputVideo(ttk.LabelFrame):
                 status_callback=lambda msg: self.status_label.config(text=msg),
                 completion_callback=lambda s, t, e: self.render_btn.config(state="normal"),
                 process_all_folder=False,
-                watermark_data=watermark_data
+                watermark_data=watermark_data,
+                tab_number=tab_number
             )
         
         # O botão volta ao normal via callback ou quando a fila termina

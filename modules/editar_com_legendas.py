@@ -334,7 +334,7 @@ class VideoRenderer:
             offset_y=offset_y
         )
 
-    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=4, audio_settings=None, watermark_data=None):
+    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=4, audio_settings=None, watermark_data=None, tab_number=None):
         """Renderiza o vídeo completo"""
         try:
             clip = mp.VideoFileClip(input_path)
@@ -426,7 +426,12 @@ class VideoRenderer:
             os.makedirs(temp_dir, exist_ok=True)
             
             base_name = os.path.splitext(os.path.basename(input_path))[0]
-            output_path = os.path.join(output_folder, f"{base_name}_render.mp4")
+            
+            # Gerar nome do arquivo com número da aba se fornecido
+            if tab_number is not None:
+                output_path = os.path.join(output_folder, f"{base_name}_aba{tab_number}.mp4")
+            else:
+                output_path = os.path.join(output_folder, f"{base_name}_render.mp4")
             
             final_clip.write_videofile(
                 output_path,

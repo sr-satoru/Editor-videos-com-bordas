@@ -11,4 +11,5 @@ json
 *.mp4
 *.zip
 *.pyc
-*.jsone
+*.json
+*.mp3

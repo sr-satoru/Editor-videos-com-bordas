@@ -251,7 +251,7 @@ class VideoEditor:
                 print(f"Erro ao gerar preview: {e}")
                 return None
 
-    def render_video(self, input_path, output_path, style, border_color="white", subtitles=None, emoji_manager=None, audio_settings=None, watermark_data=None):
+    def render_video(self, input_path, output_path, style, border_color="white", subtitles=None, emoji_manager=None, audio_settings=None, watermark_data=None, tab_number=None):
         """
         Renderiza o vídeo final usando o VideoRenderer.
         """
@@ -269,6 +269,7 @@ class VideoEditor:
             style,
             subtitles,
             audio_settings=audio_settings,
-            watermark_data=watermark_data
+            watermark_data=watermark_data,
+            tab_number=tab_number
         )
         return success, result

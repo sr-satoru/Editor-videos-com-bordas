@@ -15,7 +15,7 @@ class FolderProcessor:
         return [os.path.join(folder_path, f) for f in os.listdir(folder_path) 
                 if f.lower().endswith(video_extensions)]
 
-    def process_folder(self, input_video_path, output_folder, style, color, subtitles, emoji_manager, audio_settings, status_callback, completion_callback, process_all_folder=True, watermark_data=None):
+    def process_folder(self, input_video_path, output_folder, style, color, subtitles, emoji_manager, audio_settings, status_callback, completion_callback, process_all_folder=True, watermark_data=None, tab_number=None):
         if process_all_folder:
             folder_path = os.path.dirname(input_video_path)
             videos = self.get_videos_in_folder(folder_path)
@@ -40,7 +40,8 @@ class FolderProcessor:
                 'watermark_data': watermark_data,
                 'status_callback': status_callback,
                 'completion_callback': completion_callback,
-                'total_in_batch': len(videos)
+                'total_in_batch': len(videos),
+                'tab_number': tab_number
             }
             FolderProcessor._queue.put(task)
 
@@ -74,7 +75,8 @@ class FolderProcessor:
                     task['subtitles'], 
                     task['emoji_manager'], 
                     task['audio_settings'],
-                    watermark_data=task.get('watermark_data')
+                    watermark_data=task.get('watermark_data'),
+                    tab_number=task.get('tab_number')
                 )
                 
                 # Aqui simplificamos: cada vídeo termina e avisa. 

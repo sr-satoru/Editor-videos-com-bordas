@@ -99,8 +99,8 @@ class EditorUI(tk.Tk):
 
     def render_all_tabs(self):
         """Chama o render de todas as abas abertas"""
-        for tab in self.tabs_data:
-            tab['output'].start_rendering()
+        for idx, tab in enumerate(self.tabs_data, start=1):
+            tab['output'].start_rendering(tab_number=idx)
 
     def save_project(self):
         """Salva o estado de todas as abas em um JSON"""
