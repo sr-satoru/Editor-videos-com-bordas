@@ -177,7 +177,22 @@ class Subtitles(ttk.Frame):
                 img_w, img_h = img.size
                 img_x, img_y = (preview_w - img_w) // 2, (preview_h - img_h) // 2
                 self.preview_img_geometry = (img_x, img_y, img_w, img_h)
-                self.preview_scale_factor = img_w / 360.0
+                
+                # CORREÇÃO CRÍTICA: Quando não há bordas, o vídeo final é renderizado em 1080x1920
+                # e usa scale_factor = 1080/360 = 3.0. O preview DEVE usar o mesmo scale_factor
+                # para que as posições coincidam!
+                style_lower = style.lower()
+                border_enabled_check = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
+                
+                if border_enabled_check:
+                    # Com bordas: usa a largura da imagem do preview
+                    self.preview_scale_factor = img_w / 360.0
+                else:
+                    # Sem bordas: usa o mesmo scale_factor do vídeo final (1080/360 = 3.0)
+                    # ajustado para o tamanho do preview (img_w/1080 * 3.0 = img_w/360)
+                    # que é exatamente img_w / 360.0, MAS precisamos garantir que seja
+                    # proporcional ao output final
+                    self.preview_scale_factor = 3.0 * (img_w / 1080.0)
             else: return
 
         if self.cached_preview_base:

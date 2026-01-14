@@ -119,13 +119,15 @@ class VideoRenderer:
         watermark_data: dicionário com as configurações da marca d'água
         """
         video_image = Image.fromarray(video_frame.astype(np.uint8))
-        scale_factor = self.get_scale_factor()
         
         # Se o estilo for "Sem moldura", forçamos border_enabled para False para garantir
         if border_style == "Sem moldura":
             border_enabled = False
 
         if border_enabled:
+            # Com bordas: usa o scale_factor padrão baseado em BASE_WIDTH (360)
+            scale_factor = self.get_scale_factor()
+            
             # 1. Calcular dimensões
             v_w, v_h, scaled_border = self.calculate_video_dimensions(border_enabled, border_size_preview, is_preview=is_preview)
             
@@ -164,10 +166,15 @@ class VideoRenderer:
             offset_x = paste_x
             offset_y = paste_y
         else:
-            # Sem borda, apenas redimensiona para o tamanho final (deve ser 1080x1920)
+            # Sem borda: o vídeo preenche toda a tela 1080x1920
+            # O scale_factor deve ser calculado como OUTPUT_WIDTH / BASE_WIDTH (1080 / 360 = 3.0)
+            # mas as legendas devem ser posicionadas diretamente na imagem final sem offset
+            scale_factor = self.get_scale_factor()
             final_image = video_image.resize((self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT), Image.Resampling.LANCZOS)
-            offset_x = 0
-            offset_y = 0
+            # USER REQUEST: Aplica o mesmo offset que seria usado na moldura
+            # Simula as dimensões com borda para calcular o offset correto
+            v_w_dummy, v_h_dummy, _ = self.calculate_video_dimensions(True, border_size_preview, is_preview=is_preview)
+            offset_x, offset_y = self.get_offsets(v_w_dummy, v_h_dummy)
 
         # 2. Desenhar legendas
         if subtitles:

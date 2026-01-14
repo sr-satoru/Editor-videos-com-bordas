@@ -58,12 +58,12 @@ class RenderizadorLegendas:
 
         emoji_pattern = r'\[EMOJI:([^\]]+)\]'
         lines = text.split('\n')
-        line_height = font.size + int(5 * scale_factor)
-        # Para centralizar corretamente com anchor="lm", o start_y deve ser o y menos
-        # metade do deslocamento total entre as linhas.
-        start_y = y - (len(lines) - 1) * line_height / 2
+        line_height = font.size + int(1 * scale_factor)
+        total_height = len(lines) * line_height
+        start_y = y - total_height // 2
         
         line_widths = []
+        max_line_width = 0
         for line in lines:
             parts = re.split(emoji_pattern, line)
             w = 0
@@ -76,10 +76,15 @@ class RenderizadorLegendas:
                     if self.gerenciador_emojis.get_emoji(part):
                         w += int(font.size * emoji_scale)
             line_widths.append(w)
+            max_line_width = max(max_line_width, w)
+
+        # Calcula a posição inicial do bloco de texto (centralizado horizontalmente)
+        block_start_x = x - max_line_width // 2
 
         for i, line in enumerate(lines):
             curr_y = start_y + i * line_height
-            curr_x = x - line_widths[i] // 2
+            # No simples.py, as linhas são alinhadas à esquerda dentro do bloco centralizado
+            curr_x = block_start_x
             
             if bg and bg != "":
                 draw.rectangle([curr_x-5, curr_y-font.size//2, curr_x+line_widths[i]+5, curr_y+font.size//2], fill=bg)
@@ -113,9 +118,9 @@ class RenderizadorLegendas:
             
         emoji_pattern = r'\[EMOJI:([^\]]+)\]'
         lines = text.split('\n')
-        line_height = font.size + int(5 * scale_factor)
-        # Mesma lógica de centralização do draw_subtitle
-        start_y = y - (len(lines) - 1) * line_height / 2
+        line_height = font.size + int(1 * scale_factor)
+        total_height = len(lines) * line_height
+        start_y = y - total_height // 2
         
         max_w = 0
         min_y = float('inf')
