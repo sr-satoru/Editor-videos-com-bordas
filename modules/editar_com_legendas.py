@@ -6,6 +6,7 @@ import moviepy.editor as mp
 from moviepy.video.VideoClip import VideoClip
 from modules.subiitels.renderizador_legendas import RenderizadorLegendas
 from modules.audio.gerenciador_audio import GerenciadorAudio
+from modules import video_enhancement
 
 class VideoRenderer:
     """
@@ -26,6 +27,7 @@ class VideoRenderer:
         self.subtitle_renderer = RenderizadorLegendas(emoji_manager)
         self.audio_manager = GerenciadorAudio()
         self.blur_intensity = 25
+        self.enhancement_enabled = False
 
     def apply_blur_opencv(self, frame):
         """Aplica blur em um frame usando OpenCV"""
@@ -334,7 +336,7 @@ class VideoRenderer:
             offset_y=offset_y
         )
 
-    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=4, audio_settings=None, watermark_data=None, tab_number=None):
+    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=4, audio_settings=None, watermark_data=None, tab_number=None, enable_enhancement=False):
         """Renderiza o vídeo completo"""
         try:
             clip = mp.VideoFileClip(input_path)
@@ -380,6 +382,16 @@ class VideoRenderer:
 
             def make_frame(t):
                 frame = video_resized.get_frame(t)
+                
+                # Aplicar enhancement se ativado
+                if enable_enhancement:
+                    # Converter RGB para BGR (OpenCV format)
+                    frame_bgr = cv2.cvtColor(frame.astype(np.uint8), cv2.COLOR_RGB2BGR)
+                    # Aplicar GFPGAN
+                    enhanced_bgr = video_enhancement.enhance_frame(frame_bgr)
+                    # Converter de volta para RGB
+                    frame = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2RGB)
+                
                 bg_frame = None
                 if background_clip:
                     raw_bg = background_clip.get_frame(t)

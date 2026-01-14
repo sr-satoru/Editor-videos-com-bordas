@@ -13,3 +13,6 @@ json
 *.pyc
 *.json
 *.mp3
+# GFPGAN Models
+models/
+*.pth

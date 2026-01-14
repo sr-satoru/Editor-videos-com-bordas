@@ -73,6 +73,9 @@ class OutputVideo(ttk.LabelFrame):
         
         watermark_data = self.watermark_ui.get_state() if self.watermark_ui else None
         
+        # Obter configuração de enhancement
+        enable_enhancement = self.video_controls.enable_enhancement.get()
+        
         self.render_btn.config(state="disabled")
         
         if self.processar_pasta_var and self.processar_pasta_var.get():
@@ -89,7 +92,8 @@ class OutputVideo(ttk.LabelFrame):
                 completion_callback=self.on_folder_process_complete,
                 process_all_folder=True,
                 watermark_data=watermark_data,
-                tab_number=tab_number
+                tab_number=tab_number,
+                enable_enhancement=enable_enhancement
             )
         else:
             self.status_label.config(text="Adicionado à fila de renderização...")
@@ -106,7 +110,8 @@ class OutputVideo(ttk.LabelFrame):
                 completion_callback=lambda s, t, e: self.render_btn.config(state="normal"),
                 process_all_folder=False,
                 watermark_data=watermark_data,
-                tab_number=tab_number
+                tab_number=tab_number,
+                enable_enhancement=enable_enhancement
             )
         
         # O botão volta ao normal via callback ou quando a fila termina

@@ -2,3 +2,10 @@ moviepy
 numpy
 Pillow
 opencv-python
+
+#opitional
+
+# torch
+# torchvision
+# gfpgan
+# basicsr
