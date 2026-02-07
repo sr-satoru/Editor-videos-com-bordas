@@ -1,5 +1,8 @@
 import tkinter as tk
 import time
+import os
+import tempfile
+import pygame
 from tkinter import filedialog
 from moviepy.editor import VideoFileClip, vfx
 from PIL import Image, ImageTk
@@ -25,6 +28,11 @@ class VideoSelector:
         self.current_time = 0.0
         self.update_job = None
         
+        # Áudio
+        self.temp_audio_path = None
+        self.loop_enabled = False
+        pygame.mixer.init()
+        
         # Callbacks
         self.on_duration_changed = None
         self.on_time_changed = None
@@ -42,6 +50,13 @@ class VideoSelector:
         # Parar vídeo anterior se estiver tocando
         self.pause_video()
         
+        # Limpar áudio anterior
+        if self.temp_audio_path and os.path.exists(self.temp_audio_path):
+            try:
+                pygame.mixer.music.unload()
+                os.remove(self.temp_audio_path)
+            except: pass
+
         # Carrega o vídeo usando moviepy
         self.current_video_path = filepath
         if self.clip:
@@ -50,6 +65,14 @@ class VideoSelector:
         self.clip = VideoFileClip(filepath)
         self.current_time = 0.0
         
+        # Extrair áudio para preview
+        if self.clip.audio:
+            fd, self.temp_audio_path = tempfile.mkstemp(suffix=".mp3")
+            os.close(fd)
+            print(f"Extraindo áudio para: {self.temp_audio_path}")
+            self.clip.audio.write_audiofile(self.temp_audio_path, logger=None)
+            pygame.mixer.music.load(self.temp_audio_path)
+
         if self.on_duration_changed:
             self.on_duration_changed(self.clip.duration)
 
@@ -81,12 +104,21 @@ class VideoSelector:
     def play_video(self):
         if not self.clip: return
         self.is_playing = True
+        
+        # Iniciar áudio
+        if self.temp_audio_path:
+            pygame.mixer.music.play(start=self.current_time)
+            
         self._update_loop()
         if self.on_playback_status_changed:
             self.on_playback_status_changed(True)
 
     def pause_video(self):
         self.is_playing = False
+        
+        # Pausar áudio
+        pygame.mixer.music.stop()
+        
         if self.update_job:
             self.preview_canvas.after_cancel(self.update_job)
             self.update_job = None
@@ -97,6 +129,10 @@ class VideoSelector:
         if not self.clip: return
         self.current_time = max(0, min(t, self.clip.duration))
         self.show_frame(self.current_time)
+        
+        # Sincronizar áudio se estiver tocando
+        if self.is_playing and self.temp_audio_path:
+            pygame.mixer.music.play(start=self.current_time)
 
     def _update_loop(self):
         if not self.is_playing or not self.clip:
@@ -124,3 +160,18 @@ class VideoSelector:
         delay = max(1, int((0.04 - elapsed) * 1000))
         
         self.update_job = self.preview_canvas.after(delay, self._update_loop)
+
+    def close(self):
+        self.pause_video()
+        if self.clip:
+            self.clip.close()
+            self.clip = None
+        if self.temp_audio_path and os.path.exists(self.temp_audio_path):
+            try:
+                pygame.mixer.music.unload()
+                os.remove(self.temp_audio_path)
+                self.temp_audio_path = None
+            except: pass
+
+    def __del__(self):
+        self.close()

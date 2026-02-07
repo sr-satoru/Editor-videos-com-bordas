@@ -3,6 +3,7 @@ numpy
 Pillow
 opencv-python
 
+pygame
 #opitional
 
 # torch
