@@ -35,15 +35,29 @@ class ComponenteEmojis(ttk.LabelFrame):
         self.emoji_folder_label = ttk.Label(emoji_top, text="Nenhuma pasta selecionada", width=40)
         self.emoji_folder_label.pack(side="left", padx=5)
         
-        # Barra de Emojis
-        self.emoji_canvas = tk.Canvas(self, height=60)
-        self.emoji_canvas.pack(fill="x", padx=10, pady=5)
+        # Barra de Emojis (Agora Vertical e com Grade)
+        self.emoji_container = ttk.Frame(self)
+        self.emoji_container.pack(fill="x", padx=10, pady=5)
+        
+        self.emoji_canvas = tk.Canvas(self.emoji_container, height=150)
+        self.emoji_canvas.pack(side="left", fill="x", expand=True)
+        
+        emoji_scroll = ttk.Scrollbar(self.emoji_container, orient="vertical", command=self.emoji_canvas.yview)
+        emoji_scroll.pack(side="right", fill="y")
+        
         self.emoji_inner_frame = ttk.Frame(self.emoji_canvas)
         self.emoji_canvas.create_window((0, 0), window=self.emoji_inner_frame, anchor="nw")
         
-        emoji_scroll = ttk.Scrollbar(self, orient="horizontal", command=self.emoji_canvas.xview)
-        emoji_scroll.pack(fill="x", padx=10)
-        self.emoji_canvas.configure(xscrollcommand=emoji_scroll.set)
+        self.emoji_canvas.configure(yscrollcommand=emoji_scroll.set)
+        
+        # Ajustar largura do frame interno ao canvas
+        def _on_canvas_configure(event):
+            self.emoji_canvas.itemconfig(self.emoji_canvas.find_withtag("all")[0], width=event.width)
+        self.emoji_canvas.bind("<Configure>", _on_canvas_configure)
+
+        # Vincular scroll ao canvas e frame interno
+        self._bind_scroll_recursive(self.emoji_canvas)
+        self._bind_scroll_recursive(self.emoji_inner_frame)
         
         emoji_bottom = ttk.Frame(self)
         emoji_bottom.pack(fill="x", padx=10, pady=5)
@@ -65,7 +79,8 @@ class ComponenteEmojis(ttk.LabelFrame):
         self.emoji_manager.load_emojis(folder)
         emojis = self.emoji_manager.get_emoji_list()
         
-        for emoji_name in emojis:
+        columns = 9 # Aumentado para 9 por linha como solicitado
+        for i, emoji_name in enumerate(emojis):
             img_data = self.emoji_manager.get_emoji(emoji_name)
             if img_data:
                 thumb = img_data.copy()
@@ -74,7 +89,8 @@ class ComponenteEmojis(ttk.LabelFrame):
                 
                 btn = tk.Button(self.emoji_inner_frame, image=photo, command=lambda n=emoji_name: self.set_selected_emoji(n))
                 btn.image = photo # Referência
-                btn.pack(side="left", padx=2)
+                btn.grid(row=i // columns, column=i % columns, padx=2, pady=2)
+                self._bind_scroll_recursive(btn)
         
         self.emoji_inner_frame.update_idletasks()
         self.emoji_canvas.configure(scrollregion=self.emoji_canvas.bbox("all"))
@@ -107,3 +123,17 @@ class ComponenteEmojis(ttk.LabelFrame):
     def inserir_tag(self):
         if self.selected_emoji_name:
             self.callback_inserir(f"[EMOJI:{self.selected_emoji_name}]")
+
+    def _on_mousewheel(self, event):
+        if event.num == 4:           # Linux scroll up
+            self.emoji_canvas.yview_scroll(-1, "units")
+        elif event.num == 5:         # Linux scroll down
+            self.emoji_canvas.yview_scroll(1, "units")
+        else:                        # Windows / macOS
+            self.emoji_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        return "break" # Crucial: impede que o evento suba para o scroll principal
+
+    def _bind_scroll_recursive(self, widget):
+        widget.bind("<MouseWheel>", self._on_mousewheel)
+        widget.bind("<Button-4>", self._on_mousewheel)
+        widget.bind("<Button-5>", self._on_mousewheel)

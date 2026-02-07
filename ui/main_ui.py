@@ -20,7 +20,7 @@ class EditorUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Editor Profissional de Vídeo 9:16")
-        self.geometry("900x800")
+        self.geometry("900x880")
         self.processar_pasta_var = tk.BooleanVar()
         self.tabs_data = []
 
@@ -29,24 +29,24 @@ class EditorUI(tk.Tk):
         self.build_ui()
 
     def create_header(self):
-        header_frame = ttk.Frame(self, height=50)
+        header_frame = ttk.Frame(self) # Removido height fixo para compacidade
         header_frame.pack(fill="x", side="top")
         
-        # Título / Logo
-        title_label = ttk.Label(header_frame, text="Editor Profissional 9:16", font=("Arial", 14, "bold"))
-        title_label.pack(side="left", padx=20, pady=10)
+        # Título / Logo (Menor)
+        title_label = ttk.Label(header_frame, text="Editor 9:16", font=("Arial", 10, "bold"))
+        title_label.pack(side="left", padx=10, pady=5)
         
-        # Botão Toggle Theme
+        # Botão Toggle Theme (Menor)
         self.theme_btn = tk.Button(
             header_frame, 
             text="☀️", 
-            font=("Segoe UI Emoji", 16), 
+            font=("Segoe UI Emoji", 12), 
             bd=0, 
             cursor="hand2",
             command=self.toggle_theme_action
         )
-        self.theme_btn.pack(side="right", padx=20, pady=10)
-        self.theme_btn.ignore_theme = True # Importante para controlar cor manualmente se quiser
+        self.theme_btn.pack(side="right", padx=10, pady=5)
+        self.theme_btn.ignore_theme = True
         
         # Atualiza o botão com o estado inicial
         self.update_theme_button()
@@ -68,14 +68,7 @@ class EditorUI(tk.Tk):
         self.theme_btn.config(text=text, bg=bg_color, fg=fg_color, activebackground=bg_color, activeforeground=fg_color)
 
     def build_ui(self):
-        # ---------- NOTEBOOK ----------
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill="both", expand=True)
-
-        # ---------- CRIAR ABA INICIAL ----------
-        self.add_new_tab("Aba 1")
-
-        # ---------- FOOTER ----------
+        # ---------- FOOTER (Primeiro para garantir espaço embaixo) ----------
         Footer(self, 
                add_tab_callback=self.add_new_tab_with_auto_name,
                remove_tab_callback=self.remove_current_tab,
@@ -85,6 +78,13 @@ class EditorUI(tk.Tk):
                change_all_output_callback=self.change_all_output_path,
                change_all_audio_callback=self.change_all_audio_folder,
                load_video_all_callback=self.load_video_all_tabs)
+
+        # ---------- NOTEBOOK (Expandido para preencher o que sobra) ----------
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill="both", expand=True)
+
+        # ---------- CRIAR ABA INICIAL ----------
+        self.add_new_tab("Aba 1")
 
     def change_all_output_path(self):
         """Altera a pasta de saída de todas as abas"""

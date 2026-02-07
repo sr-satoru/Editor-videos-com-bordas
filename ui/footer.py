@@ -6,41 +6,46 @@ class Footer(ttk.Frame):
         super().__init__(parent)
         self.pack(side="bottom", fill="x")  # ocupa largura total
 
+        # Estilo para botões do rodapé (mais compactos)
+        style = ttk.Style()
+        style.configure("Footer.TButton", font=("Arial", 8))
+
         # Frame interno para alinhar botão à esquerda
         btn_frame = ttk.Frame(self)
-        btn_frame.pack(fill="x")
+        btn_frame.pack(fill="x", padx=5, pady=2)
 
         # Primeira linha de botões
         row1 = ttk.Frame(btn_frame)
         row1.pack(fill="x")
 
-        self.add_tab_btn = ttk.Button(row1, text="➕ Adicionar Aba", command=add_tab_callback)
-        self.add_tab_btn.pack(side="left", padx=5, pady=5)
+        self.add_tab_btn = ttk.Button(row1, text="➕ Adicionar Aba", command=add_tab_callback, style="Footer.TButton")
+        self.add_tab_btn.pack(side="left", padx=2, pady=1)
 
-        self.remove_tab_btn = ttk.Button(row1, text="🗑️ Remover Aba", command=remove_tab_callback)
-        self.remove_tab_btn.pack(side="left", padx=5, pady=5)
+        self.remove_tab_btn = ttk.Button(row1, text="🗑️ Remover Aba", command=remove_tab_callback, style="Footer.TButton")
+        self.remove_tab_btn.pack(side="left", padx=2, pady=1)
 
-        self.render_all_btn = ttk.Button(row1, text="🎬 Renderizar Todas as Abas", command=render_all_callback)
-        self.render_all_btn.pack(side="left", padx=5, pady=5)
+        self.render_all_btn = ttk.Button(row1, text="🎬 Renderizar Todas", command=render_all_callback, style="Footer.TButton")
+        self.render_all_btn.pack(side="left", padx=2, pady=1)
 
-        self.save_btn = ttk.Button(row1, text="💾 Salvar Projeto", command=save_callback)
-        self.save_btn.pack(side="left", padx=5, pady=5)
+        self.save_btn = ttk.Button(row1, text="💾 Salvar Projeto", command=save_callback, style="Footer.TButton")
+        self.save_btn.pack(side="left", padx=2, pady=1)
 
-        self.load_btn = ttk.Button(row1, text="📂 Importar Projeto", command=load_callback)
-        self.load_btn.pack(side="left", padx=5, pady=5)
+        self.load_btn = ttk.Button(row1, text="📂 Importar Projeto", command=load_callback, style="Footer.TButton")
+        self.load_btn.pack(side="left", padx=2, pady=1)
 
         # Segunda linha de botões (Ações Globais)
         row2 = ttk.Frame(btn_frame)
         row2.pack(fill="x")
 
-        self.change_output_btn = ttk.Button(row2, text="📁 Alterar Saída (Todas)", command=change_all_output_callback)
-        self.change_output_btn.pack(side="left", padx=5, pady=5)
+        self.change_output_btn = ttk.Button(row2, text="📁 Saída (Todas)", command=change_all_output_callback, style="Footer.TButton")
+        self.change_output_btn.pack(side="left", padx=2, pady=1)
 
-        self.change_audio_btn = ttk.Button(row2, text="🎵 Alterar Pasta Áudio (Todas)", command=change_all_audio_callback)
-        self.change_audio_btn.pack(side="left", padx=5, pady=5)
+        self.change_audio_btn = ttk.Button(row2, text="🎵 Áudio (Todas)", command=change_all_audio_callback, style="Footer.TButton")
+        self.change_audio_btn.pack(side="left", padx=2, pady=1)
 
-        self.load_video_btn = ttk.Button(row2, text="🎥 Carregar Vídeo (Todas)", command=load_video_all_callback)
-        self.load_video_btn.pack(side="left", padx=5, pady=5)
+        self.load_video_btn = ttk.Button(row2, text="🎥 Vídeo (Todas)", command=load_video_all_callback, style="Footer.TButton")
+        self.load_video_btn.pack(side="left", padx=2, pady=1)
+
 
 class EditorUI(tk.Tk):
     def __init__(self):
