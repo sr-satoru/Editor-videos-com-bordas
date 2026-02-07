@@ -223,9 +223,21 @@ class EditorUI(tk.Tk):
         new_tab = ttk.Frame(self.notebook)
         self.notebook.add(new_tab, text=tab_name)
 
-        # ================== SCROLL DA ABA ==================
-        canvas = tk.Canvas(new_tab, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(new_tab, orient="vertical", command=canvas.yview)
+        # ================== CONTAINER PRINCIPAL (DUAS COLUNAS) ==================
+        main_container = ttk.Frame(new_tab)
+        main_container.pack(fill="both", expand=True)
+
+        # Coluna da Esquerda (Preview Fixo)
+        left_column = ttk.Frame(main_container)
+        left_column.pack(side="left", fill="y", padx=10, pady=10)
+
+        # Coluna da Direita (Configurações Roláveis)
+        right_column = ttk.Frame(main_container)
+        right_column.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=10)
+
+        # ================== SCROLL DA COLUNA DIREITA ==================
+        canvas = tk.Canvas(right_column, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(right_column, orient="vertical", command=canvas.yview)
         scroll_frame = ttk.Frame(canvas)
 
         scroll_frame.bind(
@@ -234,6 +246,12 @@ class EditorUI(tk.Tk):
         )
 
         canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+        
+        # Ajustar largura do scroll_frame para acompanhar o canvas
+        def _on_canvas_configure(event):
+            canvas.itemconfig(canvas.find_withtag("all")[0], width=event.width)
+        canvas.bind("<Configure>", _on_canvas_configure)
+
         canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side="left", fill="both", expand=True)
@@ -264,8 +282,9 @@ class EditorUI(tk.Tk):
         emoji_manager = GerenciadorEmojis()
 
         # ================== MÓDULOS ==================
-        preview = Preview(scroll_frame)  # Apenas o canvas do preview
-        video_controls = VideoControls(scroll_frame, self.processar_pasta_var, preview.canvas)  # Botão seleciona vídeo
+        preview = Preview(left_column)  # Preview na ESQUERDA
+        video_controls = VideoControls(left_column, self.processar_pasta_var, preview.canvas) # Controles na ESQUERDA abaixo do preview
+        
         video_borders = VideoBorders(scroll_frame, video_controls, subtitle_manager, emoji_manager)
         
         subtitles_ui = Subtitles(scroll_frame, subtitle_manager, emoji_manager, video_controls, video_borders)

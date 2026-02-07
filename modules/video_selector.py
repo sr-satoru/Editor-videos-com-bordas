@@ -117,10 +117,16 @@ class VideoSelector:
         self.is_playing = False
         
         # Pausar áudio
-        pygame.mixer.music.stop()
+        try:
+            if pygame and pygame.mixer and pygame.mixer.get_init():
+                pygame.mixer.music.stop()
+        except (AttributeError, pygame.error): 
+            pass
         
         if self.update_job:
-            self.preview_canvas.after_cancel(self.update_job)
+            try:
+                self.preview_canvas.after_cancel(self.update_job)
+            except: pass
             self.update_job = None
         if self.on_playback_status_changed:
             self.on_playback_status_changed(False)
@@ -162,13 +168,20 @@ class VideoSelector:
         self.update_job = self.preview_canvas.after(delay, self._update_loop)
 
     def close(self):
-        self.pause_video()
+        try:
+            self.pause_video()
+        except: pass
+        
         if self.clip:
-            self.clip.close()
+            try:
+                self.clip.close()
+            except: pass
             self.clip = None
+            
         if self.temp_audio_path and os.path.exists(self.temp_audio_path):
             try:
-                pygame.mixer.music.unload()
+                if pygame and pygame.mixer and pygame.mixer.get_init():
+                    pygame.mixer.music.unload()
                 os.remove(self.temp_audio_path)
                 self.temp_audio_path = None
             except: pass
