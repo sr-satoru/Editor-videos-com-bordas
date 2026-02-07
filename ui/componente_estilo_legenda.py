@@ -49,6 +49,7 @@ class ComponenteEstiloLegenda(ttk.LabelFrame):
         
         bg_color = var.get() if var.get() else "#f0f0f0"
         indicator = tk.Label(parent, width=3, bg=bg_color, relief="raised")
+        indicator.ignore_theme = True
         indicator.grid(row=row, column=1, padx=5, pady=5, sticky="w")
         self.indicators[key] = indicator
         

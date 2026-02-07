@@ -23,6 +23,12 @@ class DialogoEdicaoLegenda(tk.Toplevel):
         self.thick_var = tk.IntVar(value=sub["border_thickness"])
         
         self.setup_ui()
+        
+        # Tenta aplicar tema
+        try:
+            self.master.winfo_toplevel().theme_manager.apply_to_widget(self)
+        except AttributeError:
+            pass
 
     def setup_ui(self):
         main_frame = tk.Frame(self)
@@ -60,8 +66,13 @@ class DialogoEdicaoLegenda(tk.Toplevel):
         # Botões
         btn_frame = tk.Frame(main_frame)
         btn_frame.pack(fill="x", pady=(20, 0))
-        tk.Button(btn_frame, text="Salvar", command=self.save, bg="green", fg="white", width=10).pack(side="left", padx=5)
-        tk.Button(btn_frame, text="Cancelar", command=self.destroy, bg="red", fg="white", width=10).pack(side="left", padx=5)
+        save_btn = tk.Button(btn_frame, text="Salvar", command=self.save, bg="green", fg="white", width=10)
+        save_btn.ignore_theme = True
+        save_btn.pack(side="left", padx=5)
+        
+        cancel_btn = tk.Button(btn_frame, text="Cancelar", command=self.destroy, bg="red", fg="white", width=10)
+        cancel_btn.ignore_theme = True
+        cancel_btn.pack(side="left", padx=5)
 
     def criar_linha_cor(self, parent, label_text, var, allow_none=False):
         row = tk.Frame(parent)

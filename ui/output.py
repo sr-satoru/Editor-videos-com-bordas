@@ -35,7 +35,7 @@ class OutputVideo(ttk.LabelFrame):
         ttk.Button(path_frame, text="Escolher Pasta", command=self.select_output_folder).pack(side="left", padx=5)
         
         # Botão de Renderizar
-        self.render_btn = ttk.Button(self, text="Renderizar Vídeo", command=self.start_rendering)
+        self.render_btn = ttk.Button(self, text="Renderizar Vídeo", command=self.start_rendering, style="Accent.TButton")
         self.render_btn.pack(pady=10)
         
         self.status_label = ttk.Label(self, text="")

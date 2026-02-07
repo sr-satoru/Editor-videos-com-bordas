@@ -8,4 +8,5 @@ class Preview:
         preview_group.pack(fill="x", pady=10)
 
         self.canvas = tk.Canvas(preview_group, width=360, height=640, bg="black")
+        self.canvas.ignore_theme = True
         self.canvas.pack(padx=10, pady=10)

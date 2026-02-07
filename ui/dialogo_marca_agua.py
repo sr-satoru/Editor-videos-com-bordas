@@ -15,6 +15,12 @@ class DialogoMarcaAgua(tk.Toplevel):
         
         self._setup_ui()
 
+        # Tenta aplicar tema
+        try:
+            self.master.winfo_toplevel().theme_manager.apply_to_widget(self)
+        except AttributeError:
+            pass
+
     def _setup_ui(self):
         main_frame = ttk.Frame(self, padding="20 20 20 20")
         main_frame.pack(fill="both", expand=True)
@@ -58,6 +64,7 @@ class DialogoMarcaAgua(tk.Toplevel):
             relief="groove",
             command=self._choose_color
         )
+        self.color_btn.ignore_theme = True
         self.color_btn.grid(row=3, column=1, sticky="w", pady=5, padx=(10, 0))
 
         # --- Botões de Ação ---

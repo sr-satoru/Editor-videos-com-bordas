@@ -34,6 +34,7 @@ class VideoBorders(ttk.LabelFrame):
         
         # Label para mostrar a cor selecionada (opcional, mas bom para UX)
         self.color_indicator = tk.Label(self, text="   ", bg=self.border_color, relief="solid")
+        self.color_indicator.ignore_theme = True
         self.color_indicator.grid(row=1, column=2, padx=5)
 
         ttk.Label(self, text="Tamanho:").grid(row=1, column=3, padx=5)

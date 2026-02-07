@@ -9,6 +9,7 @@ from ui.audio import AudioSettings
 from ui.output import OutputVideo
 from ui.footer import Footer
 from ui.marca_da_agua import WatermarkUI
+from ui.theme import ThemeManager
 import json
 from tkinter import filedialog, messagebox
 
@@ -23,7 +24,48 @@ class EditorUI(tk.Tk):
         self.processar_pasta_var = tk.BooleanVar()
         self.tabs_data = []
 
+        self.theme_manager = ThemeManager(self)
+        self.create_header()
         self.build_ui()
+
+    def create_header(self):
+        header_frame = ttk.Frame(self, height=50)
+        header_frame.pack(fill="x", side="top")
+        
+        # Título / Logo
+        title_label = ttk.Label(header_frame, text="Editor Profissional 9:16", font=("Arial", 14, "bold"))
+        title_label.pack(side="left", padx=20, pady=10)
+        
+        # Botão Toggle Theme
+        self.theme_btn = tk.Button(
+            header_frame, 
+            text="☀️", 
+            font=("Segoe UI Emoji", 16), 
+            bd=0, 
+            cursor="hand2",
+            command=self.toggle_theme_action
+        )
+        self.theme_btn.pack(side="right", padx=20, pady=10)
+        self.theme_btn.ignore_theme = True # Importante para controlar cor manualmente se quiser
+        
+        # Atualiza o botão com o estado inicial
+        self.update_theme_button()
+
+    def toggle_theme_action(self):
+        self.theme_manager.toggle_theme()
+        self.update_theme_button()
+
+    def update_theme_button(self):
+        is_light = self.theme_manager.current_theme == "light"
+        text = "🌙" if is_light else "☀️" 
+        bg_color = "#f0f0f0" if is_light else "#2d2d2d" 
+        fg_color = "#000000" if is_light else "#ffffff"
+        
+        # O botão em si deve contrastar ou se integrar. Vamos integrar.
+        # Se for light theme, botão mostra Lua (para mudar para dark)
+        # Se for dark theme, botão mostra Sol (para mudar para light)
+        
+        self.theme_btn.config(text=text, bg=bg_color, fg=fg_color, activebackground=bg_color, activeforeground=fg_color)
 
     def build_ui(self):
         # ---------- NOTEBOOK ----------
@@ -244,6 +286,10 @@ class EditorUI(tk.Tk):
             'audio': audio_settings,
             'output': output_video
         })
+        
+        # Aplicar tema à nova aba
+        if hasattr(self, 'theme_manager'):
+            self.theme_manager.apply_to_widget(new_tab)
 
 
 if __name__ == "__main__":

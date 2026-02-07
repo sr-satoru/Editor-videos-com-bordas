@@ -18,7 +18,7 @@ class AudioSettings(ttk.LabelFrame):
         ttk.Checkbutton(self, text="Sincronizar duração do vídeo com o áudio", variable=self.sync_duration_var).grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=5)
 
         ttk.Entry(self, textvariable=self.audio_folder_path, width=40, state="readonly").grid(row=2, column=1, padx=5)
-        ttk.Button(self, text="📁 Selecionar Pasta", command=self.select_audio_folder).grid(row=2, column=2, padx=5)
+        ttk.Button(self, text="📁 Selecionar Pasta", command=self.select_audio_folder, style="Accent.TButton").grid(row=2, column=2, padx=5)
 
     def select_audio_folder(self):
         folder = filedialog.askdirectory()

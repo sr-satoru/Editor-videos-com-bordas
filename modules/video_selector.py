@@ -13,6 +13,7 @@ class VideoSelector:
 
         # Botão de selecionar vídeo
         self.btn = tk.Button(parent, text="Selecionar Vídeo", command=self.select_video)
+        self.btn.is_accent = True
         self.btn.pack(side="left", padx=10, pady=10)
 
         # Variável para armazenar a imagem do preview

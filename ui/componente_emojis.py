@@ -31,12 +31,12 @@ class ComponenteEmojis(ttk.LabelFrame):
         emoji_top = ttk.Frame(self)
         emoji_top.pack(fill="x", padx=10, pady=5)
         
-        ttk.Button(emoji_top, text="📁 Pasta Emojis", command=self.select_emoji_folder).pack(side="left")
+        ttk.Button(emoji_top, text="📁 Pasta Emojis", command=self.select_emoji_folder, style="Accent.TButton").pack(side="left")
         self.emoji_folder_label = ttk.Label(emoji_top, text="Nenhuma pasta selecionada", width=40)
         self.emoji_folder_label.pack(side="left", padx=5)
         
         # Barra de Emojis
-        self.emoji_canvas = tk.Canvas(self, height=60, bg="white")
+        self.emoji_canvas = tk.Canvas(self, height=60)
         self.emoji_canvas.pack(fill="x", padx=10, pady=5)
         self.emoji_inner_frame = ttk.Frame(self.emoji_canvas)
         self.emoji_canvas.create_window((0, 0), window=self.emoji_inner_frame, anchor="nw")
