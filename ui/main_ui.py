@@ -7,6 +7,7 @@ from ui.borders import VideoBorders
 from ui.subtitles import Subtitles
 from ui.audio import AudioSettings
 from ui.output import OutputVideo
+from modules.config_global import global_config
 from ui.footer import Footer
 from ui.marca_da_agua import WatermarkUI
 from ui.mesclagem_front import MesclagemFront
@@ -58,6 +59,19 @@ class EditorUI(tk.Tk):
             command=self.toggle_theme_action
         )
         self.theme_btn.pack(side="right", padx=15, pady=8)
+
+        # Botão de Configurações
+        self.settings_btn = tk.Button(
+            self.header_frame, 
+            text="⚙️", 
+            font=("Segoe UI Emoji", 11), 
+            bd=0,
+            bg=header_bg,
+            activebackground=header_bg,
+            cursor="hand2",
+            command=self.open_settings
+        )
+        self.settings_btn.pack(side="right", padx=0, pady=8)
         self.theme_btn.ignore_theme = True
         
         # Atualiza o botão com o estado inicial
@@ -76,8 +90,13 @@ class EditorUI(tk.Tk):
         fg_color = colors["fg"]
         
         self.theme_btn.config(text=text, bg=header_bg, fg=fg_color, activebackground=header_bg, activeforeground=fg_color)
+        self.settings_btn.config(bg=header_bg, fg=fg_color, activebackground=header_bg, activeforeground=fg_color)
         self.header_frame.config(bg=header_bg, highlightbackground=colors["border"])
         self.header_title_label.config(bg=header_bg, fg=colors["select_bg"])
+
+    def open_settings(self):
+        from ui.dialogo_configuracoes import DialogoConfiguracoes
+        DialogoConfiguracoes(self)
 
     def build_ui(self):
         # ---------- FOOTER (Primeiro para garantir espaço embaixo) ----------

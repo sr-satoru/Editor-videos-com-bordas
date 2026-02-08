@@ -56,6 +56,9 @@ class ThemeManager:
         else:
             self.apply_theme("light")
 
+    def get_current_colors(self):
+        return LIGHT_THEME if self.current_theme == "light" else DARK_THEME
+
     def apply_theme(self, theme_name):
         self.current_theme = theme_name
         colors = LIGHT_THEME if theme_name == "light" else DARK_THEME

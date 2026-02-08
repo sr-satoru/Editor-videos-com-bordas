@@ -8,6 +8,7 @@ from modules.subiitels.renderizador_legendas import RenderizadorLegendas
 from modules.audio.gerenciador_audio import GerenciadorAudio
 from modules import video_enhancement
 from modules import mesclagem_back
+from modules.config_global import global_config
 
 class VideoRenderer:
     """
@@ -337,7 +338,10 @@ class VideoRenderer:
             offset_y=offset_y
         )
 
-    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=4, audio_settings=None, watermark_data=None, mesclagem_data=None, tab_number=None, enable_enhancement=False):
+    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=None, audio_settings=None, watermark_data=None, mesclagem_data=None, tab_number=None, enable_enhancement=False):
+        # Usar threads do config global se não for especificado
+        if threads is None:
+            threads = global_config.get("num_threads")
         """Renderiza o vídeo completo"""
         try:
             # 0. Opção de Ocultar Legendas no Vídeo Principal

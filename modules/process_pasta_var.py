@@ -15,7 +15,7 @@ class FolderProcessor:
         return [os.path.join(folder_path, f) for f in os.listdir(folder_path) 
                 if f.lower().endswith(video_extensions)]
 
-    def process_folder(self, input_video_path, output_folder, style, color, subtitles, emoji_manager, audio_settings, status_callback, completion_callback, process_all_folder=True, watermark_data=None, tab_number=None, enable_enhancement=False):
+    def process_folder(self, input_video_path, output_folder, style, color, subtitles, emoji_manager, audio_settings, status_callback, completion_callback, process_all_folder=True, watermark_data=None, mesclagem_data=None, tab_number=None, enable_enhancement=False):
         if process_all_folder:
             folder_path = os.path.dirname(input_video_path)
             videos = self.get_videos_in_folder(folder_path)
