@@ -7,9 +7,9 @@ from modules.process_pasta_var import FolderProcessor
 import threading
 
 class OutputVideo(ttk.LabelFrame):
-    def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings_ui, watermark_ui, processar_pasta_var=None):
-        super().__init__(parent, text="Salvar Vídeo Processado")
-        self.pack(fill="x", pady=10)
+    def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings_ui, watermark_ui, mesclagem_ui, processar_pasta_var=None):
+        super().__init__(parent, text="Salvar Vídeo Processado", padding=10) # Adicionado padding interno
+        self.pack(fill="x", pady=10, padx=10)
         
         self.video_controls = video_controls
         self.video_borders = video_borders
@@ -17,6 +17,7 @@ class OutputVideo(ttk.LabelFrame):
         self.emoji_manager = emoji_manager
         self.audio_settings_ui = audio_settings_ui
         self.watermark_ui = watermark_ui
+        self.mesclagem_ui = mesclagem_ui
         self.processar_pasta_var = processar_pasta_var
         self.editor = VideoEditor()
         self.folder_processor = FolderProcessor(self.editor)
@@ -72,6 +73,7 @@ class OutputVideo(ttk.LabelFrame):
         }
         
         watermark_data = self.watermark_ui.get_state() if self.watermark_ui else None
+        mesclagem_data = self.mesclagem_ui.get_state() if self.mesclagem_ui else None
         
         # Obter configuração de enhancement
         enable_enhancement = self.video_controls.enable_enhancement.get()
@@ -92,6 +94,7 @@ class OutputVideo(ttk.LabelFrame):
                 completion_callback=self.on_folder_process_complete,
                 process_all_folder=True,
                 watermark_data=watermark_data,
+                mesclagem_data=mesclagem_data,
                 tab_number=tab_number,
                 enable_enhancement=enable_enhancement
             )
@@ -110,6 +113,7 @@ class OutputVideo(ttk.LabelFrame):
                 completion_callback=lambda s, t, e: self.render_btn.config(state="normal"),
                 process_all_folder=False,
                 watermark_data=watermark_data,
+                mesclagem_data=mesclagem_data,
                 tab_number=tab_number,
                 enable_enhancement=enable_enhancement
             )

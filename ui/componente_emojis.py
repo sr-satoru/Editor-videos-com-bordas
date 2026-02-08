@@ -35,11 +35,13 @@ class ComponenteEmojis(ttk.LabelFrame):
         self.emoji_folder_label = ttk.Label(emoji_top, text="Nenhuma pasta selecionada", width=40)
         self.emoji_folder_label.pack(side="left", padx=5)
         
-        # Barra de Emojis (Agora Vertical e com Grade)
+        # Barra de Emojis (Visual Limpo)
+        ttk.Label(self, text="📦 Emojis Disponíveis", font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=10, pady=(10, 0))
+        
         self.emoji_container = ttk.Frame(self)
         self.emoji_container.pack(fill="x", padx=10, pady=5)
         
-        self.emoji_canvas = tk.Canvas(self.emoji_container, height=150)
+        self.emoji_canvas = tk.Canvas(self.emoji_container, height=150, bd=0, highlightthickness=1, relief="flat")
         self.emoji_canvas.pack(side="left", fill="x", expand=True)
         
         emoji_scroll = ttk.Scrollbar(self.emoji_container, orient="vertical", command=self.emoji_canvas.yview)

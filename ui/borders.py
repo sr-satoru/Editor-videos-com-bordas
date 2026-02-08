@@ -2,28 +2,34 @@ import tkinter as tk
 from tkinter import ttk, colorchooser
 from PIL import Image, ImageTk
 from modules.video_editor import VideoEditor
+from ui.componentes_custom import ToggleSwitch
 
 class VideoBorders(ttk.LabelFrame):
     def __init__(self, parent, video_controls, subtitle_manager, emoji_manager):
-        super().__init__(parent, text="Bordas do Vídeo")
-        self.pack(fill="x", pady=10)
+        super().__init__(parent, text="Bordas do Vídeo", padding=10)
+        self.pack(fill="x", pady=10, padx=10)
         
         self.video_controls = video_controls
         self.subtitle_manager = subtitle_manager
         self.emoji_manager = emoji_manager
         self.editor = VideoEditor()
-        self.preview_image_tk = None # Manter referência para não ser coletado pelo GC
+        self.preview_image_tk = None
 
         self.add_border = tk.BooleanVar()
-        # Checkbutton parece redundante se temos o combobox com "Sem moldura", mas mantendo por compatibilidade ou lógica extra
-        self.check_border = ttk.Checkbutton(self, text="Adicionar Borda ao Vídeo", variable=self.add_border, command=self.update_preview)
-        self.check_border.grid(row=0, column=0, sticky="w", padx=10, pady=5)
         
-        ttk.Label(self, text="Estilo:").grid(row=0, column=1, padx=5)
+        # Row 0: Switch + Style
+        row0 = ttk.Frame(self)
+        row0.grid(row=0, column=0, columnspan=5, sticky="w", pady=5)
         
+        self.sw_border = ToggleSwitch(row0, self.add_border, command=self.update_preview)
+        self.sw_border.pack(side="left", padx=(0, 10))
+        ttk.Label(row0, text="Ativar Moldura/Estilo", font=("Segoe UI", 9)).pack(side="left", padx=(0, 20))
+
+        ttk.Label(row0, text="Estilo:").pack(side="left", padx=5)
         self.style_var = tk.StringVar(value="Sem moldura")
-        self.style_combo = ttk.Combobox(self, textvariable=self.style_var, values=["Moldura", "Sem moldura", "black", "black + Moldura", "White", "Blur", "Blur + Moldura"], width=15)
-        self.style_combo.grid(row=0, column=2)
+        self.style_combo = ttk.Combobox(row0, textvariable=self.style_var, values=["Moldura", "Sem moldura", "black", "black + Moldura", "White", "Blur", "Blur + Moldura"], width=15)
+        self.style_combo.pack(side="left", padx=5)
+        self.style_combo.bind("<<ComboboxSelected>>", self.update_preview)
         self.style_combo.bind("<<ComboboxSelected>>", self.update_preview)
         
         ttk.Label(self, text="Cor da Moldura:").grid(row=1, column=0, padx=10, pady=5, sticky="w")

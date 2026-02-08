@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, colorchooser, filedialog
 from ui.dialogo_marca_agua import DialogoMarcaAgua
 from modules.logo_image_var import LogoManager
+from ui.componentes_custom import ToggleSwitch
 
 class WatermarkUI(ttk.LabelFrame):
     def __init__(self, parent, video_controls, subtitle_manager, emoji_manager, video_borders):
@@ -44,25 +45,6 @@ class WatermarkUI(ttk.LabelFrame):
         self.update_preview()
 
     def _setup_ui(self):
-        # --- Seção: Logo de Finalização ---
-        video_frame = ttk.LabelFrame(self, text=" Logo de Finalização ", padding=10)
-        video_frame.pack(fill="x", pady=(0, 10))
-        
-        self.add_final_video_var = tk.BooleanVar()
-        self.check_final_video = ttk.Checkbutton(
-            video_frame, text="Adicionar um vídeo final ao projeto", variable=self.add_final_video_var, command=self.update_preview
-        )
-        self.check_final_video.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 5))
-        
-        self.video_path_var = tk.StringVar()
-        self.entry_video_path = ttk.Entry(video_frame, textvariable=self.video_path_var)
-        self.entry_video_path.grid(row=1, column=0, sticky="we", padx=(0, 5))
-        self.entry_video_path.bind("<KeyRelease>", self.update_preview)
-        
-        self.btn_browse_video = ttk.Button(video_frame, text="Procurar", width=10, command=self._browse_video)
-        self.btn_browse_video.grid(row=1, column=1, sticky="w")
-        video_frame.columnconfigure(0, weight=1)
-
         # --- Seção: Logo ---
         logo_frame = ttk.LabelFrame(self, text=" Logo / Imagem ", padding=10)
         logo_frame.pack(fill="x", pady=(0, 10))
@@ -83,10 +65,13 @@ class WatermarkUI(ttk.LabelFrame):
         text_mark_frame.pack(fill="x")
         
         self.add_text_mark_var = tk.BooleanVar()
-        self.check_text_mark = ttk.Checkbutton(
-            text_mark_frame, text="Ativar marca d'água em texto", variable=self.add_text_mark_var, command=self.update_preview
-        )
-        self.check_text_mark.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 5))
+        
+        row_sw = ttk.Frame(text_mark_frame)
+        row_sw.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        
+        self.sw_text_mark = ToggleSwitch(row_sw, self.add_text_mark_var, command=self.update_preview)
+        self.sw_text_mark.pack(side="left", padx=(0, 10))
+        ttk.Label(row_sw, text="Ativar marca d'água em texto", font=("Segoe UI", 9)).pack(side="left")
         
         input_frame = ttk.Frame(text_mark_frame)
         input_frame.grid(row=1, column=0, columnspan=2, sticky="we")
@@ -114,15 +99,6 @@ class WatermarkUI(ttk.LabelFrame):
     def _on_text_entry_change(self, event=None):
         self.text_config["text_mark"] = self.entry_text_mark_display.get()
         self.update_preview()
-
-    def _browse_video(self):
-        path = filedialog.askopenfilename(
-            title="Selecionar Vídeo Final",
-            filetypes=[("Video files", "*.mp4 *.avi *.mov *.mkv")]
-        )
-        if path:
-            self.video_path_var.set(path)
-            self.update_preview()
 
     def _browse_logo(self):
         path = filedialog.askopenfilename(
@@ -189,15 +165,11 @@ class WatermarkUI(ttk.LabelFrame):
         })
         
         state.update({
-            "add_final_video": self.add_final_video_var.get(),
-            "video_path": self.video_path_var.get(),
             "add_text_mark": self.add_text_mark_var.get(),
         })
         return state
 
     def set_state(self, state):
-        self.add_final_video_var.set(state.get("add_final_video", False))
-        self.video_path_var.set(state.get("video_path", ""))
         self.logo_path_var.set(state.get("logo_path", ""))
         self.add_text_mark_var.set(state.get("add_text_mark", False))
         

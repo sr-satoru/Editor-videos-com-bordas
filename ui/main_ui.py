@@ -9,7 +9,8 @@ from ui.audio import AudioSettings
 from ui.output import OutputVideo
 from ui.footer import Footer
 from ui.marca_da_agua import WatermarkUI
-from ui.theme import ThemeManager
+from ui.mesclagem_front import MesclagemFront
+from ui.theme import ThemeManager, LIGHT_THEME, DARK_THEME
 import json
 from tkinter import filedialog, messagebox
 
@@ -29,23 +30,34 @@ class EditorUI(tk.Tk):
         self.build_ui()
 
     def create_header(self):
-        header_frame = ttk.Frame(self) # Removido height fixo para compacidade
-        header_frame.pack(fill="x", side="top")
+        colors = LIGHT_THEME if self.theme_manager.current_theme == "light" else DARK_THEME
+        header_bg = colors["surface"]
         
-        # Título / Logo (Menor)
-        title_label = ttk.Label(header_frame, text="Editor 9:16", font=("Arial", 10, "bold"))
-        title_label.pack(side="left", padx=10, pady=5)
+        self.header_frame = tk.Frame(self, bg=header_bg, highlightthickness=1, highlightbackground=colors["border"])
+        self.header_frame.pack(fill="x", side="top")
         
-        # Botão Toggle Theme (Menor)
+        # Título / Logo (Mais elegante)
+        self.header_title_label = tk.Label(
+            self.header_frame, 
+            text="🎬 Editor 9:16", 
+            font=("Segoe UI", 12, "bold"),
+            bg=header_bg,
+            fg=colors["select_bg"]
+        )
+        self.header_title_label.pack(side="left", padx=15, pady=8)
+        
+        # Botão Toggle Theme (Menor e mais limpo)
         self.theme_btn = tk.Button(
-            header_frame, 
+            self.header_frame, 
             text="☀️", 
-            font=("Segoe UI Emoji", 12), 
-            bd=0, 
+            font=("Segoe UI Emoji", 11), 
+            bd=0,
+            bg=header_bg,
+            activebackground=header_bg,
             cursor="hand2",
             command=self.toggle_theme_action
         )
-        self.theme_btn.pack(side="right", padx=10, pady=5)
+        self.theme_btn.pack(side="right", padx=15, pady=8)
         self.theme_btn.ignore_theme = True
         
         # Atualiza o botão com o estado inicial
@@ -57,15 +69,15 @@ class EditorUI(tk.Tk):
 
     def update_theme_button(self):
         is_light = self.theme_manager.current_theme == "light"
+        colors = LIGHT_THEME if is_light else DARK_THEME
         text = "🌙" if is_light else "☀️" 
-        bg_color = "#f0f0f0" if is_light else "#2d2d2d" 
-        fg_color = "#000000" if is_light else "#ffffff"
         
-        # O botão em si deve contrastar ou se integrar. Vamos integrar.
-        # Se for light theme, botão mostra Lua (para mudar para dark)
-        # Se for dark theme, botão mostra Sol (para mudar para light)
+        header_bg = colors["surface"]
+        fg_color = colors["fg"]
         
-        self.theme_btn.config(text=text, bg=bg_color, fg=fg_color, activebackground=bg_color, activeforeground=fg_color)
+        self.theme_btn.config(text=text, bg=header_bg, fg=fg_color, activebackground=header_bg, activeforeground=fg_color)
+        self.header_frame.config(bg=header_bg, highlightbackground=colors["border"])
+        self.header_title_label.config(bg=header_bg, fg=colors["select_bg"])
 
     def build_ui(self):
         # ---------- FOOTER (Primeiro para garantir espaço embaixo) ----------
@@ -228,11 +240,11 @@ class EditorUI(tk.Tk):
         main_container.pack(fill="both", expand=True)
 
         # Coluna da Esquerda (Preview Fixo)
-        left_column = ttk.Frame(main_container)
-        left_column.pack(side="left", fill="y", padx=10, pady=10)
+        left_column = ttk.Frame(main_container, padding=(10, 0))
+        left_column.pack(side="left", fill="y", padx=5, pady=10)
 
         # Coluna da Direita (Configurações Roláveis)
-        right_column = ttk.Frame(main_container)
+        right_column = ttk.Frame(main_container, padding=(0, 0))
         right_column.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=10)
 
         # ================== SCROLL DA COLUNA DIREITA ==================
@@ -294,7 +306,10 @@ class EditorUI(tk.Tk):
         subtitles_ui.watermark_ui = watermark_ui  # Referência para ler dados da marca d'água
         
         audio_settings = AudioSettings(scroll_frame)
-        output_video = OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings, watermark_ui, processar_pasta_var=self.processar_pasta_var)
+        
+        mesclagem_ui = MesclagemFront(scroll_frame, video_controls) # Novo Módulo de Finalizadores
+        
+        output_video = OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings, watermark_ui, mesclagem_ui, processar_pasta_var=self.processar_pasta_var)
         
         self.tabs_data.append({
             'frame': new_tab,
@@ -302,6 +317,7 @@ class EditorUI(tk.Tk):
             'borders': video_borders,
             'subtitles': subtitles_ui,
             'watermark': watermark_ui,
+            'mesclagem': mesclagem_ui,
             'audio': audio_settings,
             'output': output_video
         })

@@ -38,6 +38,7 @@ class FolderProcessor:
                 'emoji_manager': emoji_manager,
                 'audio_settings': audio_settings,
                 'watermark_data': watermark_data,
+                'mesclagem_data': mesclagem_data,
                 'status_callback': status_callback,
                 'completion_callback': completion_callback,
                 'total_in_batch': len(videos),
@@ -77,6 +78,7 @@ class FolderProcessor:
                     task['emoji_manager'], 
                     task['audio_settings'],
                     watermark_data=task.get('watermark_data'),
+                    mesclagem_data=task.get('mesclagem_data'),
                     tab_number=task.get('tab_number'),
                     enable_enhancement=task.get('enable_enhancement', False)
                 )

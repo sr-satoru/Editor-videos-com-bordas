@@ -37,6 +37,7 @@ class VideoSelector:
         self.on_duration_changed = None
         self.on_time_changed = None
         self.on_playback_status_changed = None
+        self.last_update_time = 0
 
     def select_video(self):
         # Abre diálogo para escolher vídeo
@@ -104,6 +105,7 @@ class VideoSelector:
     def play_video(self):
         if not self.clip: return
         self.is_playing = True
+        self.last_update_time = time.time()
         
         # Iniciar áudio
         if self.temp_audio_path:
@@ -144,15 +146,22 @@ class VideoSelector:
         if not self.is_playing or not self.clip:
             return
 
-        start_time = time.time()
+        now = time.time()
+        dt = now - self.last_update_time
+        self.last_update_time = now
         
-        # Avança tempo (assumindo 30fps para suavidade na UI, mesmo que vídeo seja diferente)
-        # Para ser mais preciso, deveríamos usar delta time real
-        self.current_time += 0.04 # ~25fps
+        # Avança tempo baseado no tempo real decorrido
+        self.current_time += dt
         
         if self.current_time >= self.clip.duration:
             self.current_time = 0
-            if not getattr(self, 'loop_enabled', True): # Loop por padrão
+            # Resetar áudio no loop para manter sincronia
+            if self.temp_audio_path:
+                try:
+                    pygame.mixer.music.play(0)
+                except: pass
+            
+            if not getattr(self, 'loop_enabled', True):
                 self.pause_video()
                 return
 
@@ -161,11 +170,8 @@ class VideoSelector:
         if self.on_time_changed:
             self.on_time_changed(self.current_time)
 
-        # Agenda próximo frame compensando o tempo de processamento
-        elapsed = time.time() - start_time
-        delay = max(1, int((0.04 - elapsed) * 1000))
-        
-        self.update_job = self.preview_canvas.after(delay, self._update_loop)
+        # Agenda próximo ciclo (target ~30fps)
+        self.update_job = self.preview_canvas.after(30, self._update_loop)
 
     def close(self):
         try:

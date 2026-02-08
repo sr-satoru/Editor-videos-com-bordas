@@ -7,6 +7,7 @@ from moviepy.video.VideoClip import VideoClip
 from modules.subiitels.renderizador_legendas import RenderizadorLegendas
 from modules.audio.gerenciador_audio import GerenciadorAudio
 from modules import video_enhancement
+from modules import mesclagem_back
 
 class VideoRenderer:
     """
@@ -336,9 +337,14 @@ class VideoRenderer:
             offset_y=offset_y
         )
 
-    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=4, audio_settings=None, watermark_data=None, tab_number=None, enable_enhancement=False):
+    def render_video(self, input_path, output_folder, border_enabled, border_size_preview, border_color, border_style, subtitles, emoji_scale=1.0, threads=4, audio_settings=None, watermark_data=None, mesclagem_data=None, tab_number=None, enable_enhancement=False):
         """Renderiza o vídeo completo"""
         try:
+            # 0. Opção de Ocultar Legendas no Vídeo Principal
+            actual_subtitles = subtitles
+            if mesclagem_data and mesclagem_data.get("hide_subtitles"):
+                actual_subtitles = []
+
             clip = mp.VideoFileClip(input_path)
             
             # 1. Lógica de Áudio
@@ -399,7 +405,7 @@ class VideoRenderer:
                 
                 return self.render_frame(
                     frame, 
-                    subtitles, 
+                    actual_subtitles, 
                     border_enabled, 
                     border_size_preview, 
                     border_color, 
@@ -416,20 +422,29 @@ class VideoRenderer:
             if final_audio:
                 final_clip = final_clip.set_audio(final_audio)
 
-            # 3. Adicionar Vídeo Final (Concatenação)
-            if watermark_data and watermark_data.get("add_final_video"):
-                video_final_path = watermark_data.get("video_path")
-                if video_final_path and os.path.exists(video_final_path):
-                    try:
-                        final_video_clip = mp.VideoFileClip(video_final_path)
-                        final_video_clip = final_video_clip.resize(newsize=(self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT))
-                        
-                        # Concatenar
-                        concatenated = mp.concatenate_videoclips([final_clip, final_video_clip])
-                        final_clip = concatenated
-                    except Exception as e:
-                        print(f"Erro ao concatenar vídeo final: {e}")
+            # 3. Adicionar Vídeos Sequenciais (Mesclagem e CTA)
+            sequence = [final_clip]
+            
+            # 3.1 Vídeo de Mesclagem (Logo após o principal)
+            if mesclagem_data and mesclagem_data.get("use_merge"):
+                merge_path = mesclagem_data.get("merge_path")
+                if merge_path and os.path.exists(merge_path):
+                    merge_clip = mesclagem_back.preparar_video_extra(merge_path)
+                    if merge_clip:
+                        sequence.append(merge_clip)
 
+            # 3.2 Vídeo de CTA (Final)
+            if mesclagem_data and mesclagem_data.get("use_cta"):
+                cta_path = mesclagem_data.get("cta_path")
+                if cta_path and os.path.exists(cta_path):
+                    cta_video_clip = mesclagem_back.preparar_video_extra(cta_path)
+                    if cta_video_clip:
+                        sequence.append(cta_video_clip)
+            
+            # Se houver mais de um vídeo, concatenar
+            if len(sequence) > 1:
+                final_clip = mp.concatenate_videoclips(sequence, method="compose") # compose ajuda com disparidade de FPS/Size
+            
             # Garantir que o diretório de saída exista
             os.makedirs(output_folder, exist_ok=True)
             
