@@ -43,11 +43,18 @@ class VideoBorders(ttk.LabelFrame):
         self.color_indicator.ignore_theme = True
         self.color_indicator.grid(row=1, column=2, padx=5)
 
-        ttk.Label(self, text="Tamanho:").grid(row=1, column=3, padx=5)
+        ttk.Label(self, text="Tamanho:").grid(row=1, column=3, padx=5, sticky="w")
         self.border_size_var = tk.IntVar(value=14)
         self.border_size_spin = ttk.Spinbox(self, from_=10, to=200, textvariable=self.border_size_var, width=5, command=self.update_preview)
-        self.border_size_spin.grid(row=1, column=4, padx=5)
+        self.border_size_spin.grid(row=1, column=4, padx=5, sticky="w")
         self.border_size_spin.bind("<Return>", self.update_preview)
+
+        self.video_w_ratio_var = tk.DoubleVar(value=0.78)
+        self.video_h_ratio_var = tk.DoubleVar(value=0.70)
+        
+        # Dica para UX
+        ttk.Label(self, text="💡 Dica: Arraste o canto amarelo no preview para redimensionar o vídeo.", 
+                  font=("Segoe UI", 8, "italic"), foreground="gray").grid(row=2, column=0, columnspan=5, pady=(5, 0))
 
     def choose_color(self):
         color = colorchooser.askcolor(title="Escolher cor da Moldura", color=self.border_color)
@@ -68,6 +75,10 @@ class VideoBorders(ttk.LabelFrame):
             return
 
         style = self.get_effective_style()
+
+        # Atualizar proporções dinâmicas no editor
+        self.editor.video_width_ratio = self.video_w_ratio_var.get()
+        self.editor.video_height_ratio = self.video_h_ratio_var.get()
 
         # Gerar frame processado
         frame = self.editor.generate_preview_image(
@@ -113,7 +124,9 @@ class VideoBorders(ttk.LabelFrame):
             "add_border": self.add_border.get(),
             "style": self.style_var.get(),
             "border_color": self.border_color,
-            "border_size": self.border_size_var.get()
+            "border_size": self.border_size_var.get(),
+            "video_w_ratio": self.video_w_ratio_var.get(),
+            "video_h_ratio": self.video_h_ratio_var.get()
         }
 
     def set_state(self, state):
@@ -122,4 +135,6 @@ class VideoBorders(ttk.LabelFrame):
         self.border_color = state.get("border_color", "#FFFFFF")
         self.color_indicator.config(bg=self.border_color)
         self.border_size_var.set(state.get("border_size", 14))
+        self.video_w_ratio_var.set(state.get("video_w_ratio", 0.78))
+        self.video_h_ratio_var.set(state.get("video_h_ratio", 0.70))
         self.update_preview()

@@ -62,24 +62,36 @@ class VideoSelector:
         # Carrega o vídeo usando moviepy
         self.current_video_path = filepath
         if self.clip:
-            self.clip.close()
+            try:
+                self.clip.close()
+            except: pass
             
-        self.clip = VideoFileClip(filepath)
-        self.current_time = 0.0
-        
-        # Extrair áudio para preview
-        if self.clip.audio:
-            fd, self.temp_audio_path = tempfile.mkstemp(suffix=".mp3")
-            os.close(fd)
-            print(f"Extraindo áudio para: {self.temp_audio_path}")
-            self.clip.audio.write_audiofile(self.temp_audio_path, logger=None)
-            pygame.mixer.music.load(self.temp_audio_path)
+        try:
+            self.clip = VideoFileClip(filepath)
+            self.current_time = 0.0
+            
+            # Extrair áudio para preview
+            if self.clip.audio:
+                try:
+                    fd, self.temp_audio_path = tempfile.mkstemp(suffix=".mp3")
+                    os.close(fd)
+                    print(f"Extraindo áudio para: {self.temp_audio_path}")
+                    self.clip.audio.write_audiofile(self.temp_audio_path, logger=None)
+                    pygame.mixer.music.load(self.temp_audio_path)
+                except Exception as audio_err:
+                    print(f"Erro ao processar áudio: {audio_err}")
+                    self.temp_audio_path = None
 
-        if self.on_duration_changed:
-            self.on_duration_changed(self.clip.duration)
+            if self.on_duration_changed:
+                self.on_duration_changed(self.clip.duration)
 
-        # Mostra frame inicial
-        self.show_frame(0)
+            # Mostra frame inicial
+            self.show_frame(0)
+        except Exception as e:
+            print(f"Erro crítico ao carregar vídeo '{filepath}': {e}")
+            self.clip = None
+            self.current_video_path = None
+            if self.on_duration_changed: self.on_duration_changed(0)
 
     def show_frame(self, t):
         if not self.clip: return

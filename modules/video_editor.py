@@ -155,11 +155,13 @@ class VideoEditor:
             
         return final
 
-    def generate_base_preview(self, video_path, style, border_color="white", border_size_preview=14):
+    def generate_base_preview(self, video_path, style, border_color="white", border_size_preview=14, video_width_ratio=0.78, video_height_ratio=0.70):
         """
         Gera o frame base do preview (sem legendas).
         """
         renderer = VideoRenderer(None)
+        renderer.video_width_ratio = video_width_ratio
+        renderer.video_height_ratio = video_height_ratio
         style_lower = style.lower()
         border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
         
@@ -187,11 +189,13 @@ class VideoEditor:
             print(f"Erro ao gerar base preview: {e}")
             return None
 
-    def generate_preview_image(self, video_path, style, border_color="white", subtitles=None, emoji_manager=None, base_frame=None, border_size_preview=14, watermark_data=None):
+    def generate_preview_image(self, video_path, style, border_color="white", subtitles=None, emoji_manager=None, base_frame=None, border_size_preview=14, watermark_data=None, video_width_ratio=0.78, video_height_ratio=0.70):
         """
         Gera uma imagem de preview.
         """
         renderer = VideoRenderer(emoji_manager)
+        renderer.video_width_ratio = video_width_ratio
+        renderer.video_height_ratio = video_height_ratio
         style_lower = style.lower()
         border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
 
@@ -251,11 +255,16 @@ class VideoEditor:
                 print(f"Erro ao gerar preview: {e}")
                 return None
 
-    def render_video(self, input_path, output_path, style, border_color="white", subtitles=None, emoji_manager=None, audio_settings=None, watermark_data=None, mesclagem_data=None, tab_number=None, enable_enhancement=False):
+    def render_video(self, input_path, output_path, style, border_color="white", subtitles=None, emoji_manager=None, audio_settings=None, watermark_data=None, mesclagem_data=None, tab_number=None, enable_enhancement=False, video_width_ratio=0.78, video_height_ratio=0.70):
         """
         Renderiza o vídeo final usando o VideoRenderer.
         """
         renderer = VideoRenderer(emoji_manager)
+        
+        # Sincronizar proporções do editor com o renderer
+        renderer.video_width_ratio = video_width_ratio
+        renderer.video_height_ratio = video_height_ratio
+        
         style_lower = style.lower()
         border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
         border_size_preview = 14 # Padrão

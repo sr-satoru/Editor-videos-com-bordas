@@ -63,6 +63,10 @@ class OutputVideo(ttk.LabelFrame):
         color = self.video_borders.get_border_color()
         subtitles = self.subtitle_manager.get_subtitles()
         
+        # Pega as proporções dinâmicas atuais da moldura (vídeo interno)
+        w_ratio = self.video_borders.video_w_ratio_var.get()
+        h_ratio = self.video_borders.video_h_ratio_var.get()
+        
         # Coletar configurações de áudio
         audio_settings = {
             'remove_audio': self.audio_settings_ui.remove_audio_var.get(),
@@ -96,7 +100,9 @@ class OutputVideo(ttk.LabelFrame):
                 watermark_data=watermark_data,
                 mesclagem_data=mesclagem_data,
                 tab_number=tab_number,
-                enable_enhancement=enable_enhancement
+                enable_enhancement=enable_enhancement,
+                video_width_ratio=w_ratio,
+                video_height_ratio=h_ratio
             )
         else:
             self.status_label.config(text="Adicionado à fila de renderização...")
@@ -115,7 +121,9 @@ class OutputVideo(ttk.LabelFrame):
                 watermark_data=watermark_data,
                 mesclagem_data=mesclagem_data,
                 tab_number=tab_number,
-                enable_enhancement=enable_enhancement
+                enable_enhancement=enable_enhancement,
+                video_width_ratio=w_ratio,
+                video_height_ratio=h_ratio
             )
         
         # O botão volta ao normal via callback ou quando a fila termina

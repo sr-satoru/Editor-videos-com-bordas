@@ -20,10 +20,6 @@ class VideoRenderer:
     BASE_WIDTH = 360.0  # Base usada no preview para cálculos de escala (360x640)
     ASPECT_RATIO = 9 / 16
     
-    # Proporções do vídeo interno (baseado no old/black.py)
-    VIDEO_WIDTH_RATIO = 0.78
-    VIDEO_HEIGHT_RATIO = 0.70
-
     def __init__(self, emoji_manager):
         self.emoji_manager = emoji_manager
         self.subtitle_renderer = RenderizadorLegendas(emoji_manager)
@@ -31,6 +27,10 @@ class VideoRenderer:
         self.blur_intensity = 25
         self.enhancement_enabled = False
         self.logo_cache = {}
+        
+        # Proporções dinâmicas do vídeo interno
+        self.video_width_ratio = 0.78
+        self.video_height_ratio = 0.70
 
     def apply_blur_opencv(self, frame):
         """Aplica blur em um frame usando OpenCV"""
@@ -54,9 +54,9 @@ class VideoRenderer:
         if not border_enabled:
             return self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT, 0
 
-        # Se houver borda, usamos as proporções fixas do old/black.py
-        video_width = int(self.OUTPUT_WIDTH * self.VIDEO_WIDTH_RATIO)
-        video_height = int(self.OUTPUT_HEIGHT * self.VIDEO_HEIGHT_RATIO)
+        # Se houver borda, usamos as proporções dinâmicas
+        video_width = int(self.OUTPUT_WIDTH * self.video_width_ratio)
+        video_height = int(self.OUTPUT_HEIGHT * self.video_height_ratio)
         
         if is_preview:
             # No preview, deixamos 30% maior para melhor visibilidade na interface
@@ -116,12 +116,13 @@ class VideoRenderer:
                     pixels[x, y] = (r, g, b)
         return image
 
-    def render_frame(self, video_frame, subtitles, border_enabled, border_size_preview, border_color, border_style, emoji_scale=1.0, background_frame=None, is_preview=False, watermark_data=None):
+    def render_frame(self, video_frame, subtitles, border_enabled, border_size_preview, border_color, border_style, emoji_scale=1.0, background_frame=None, is_preview=False, watermark_data=None, current_time=0.0):
         """
         Renderiza um único frame com bordas, legendas e marca d'água.
         video_frame: numpy array do frame do vídeo (já redimensionado para a área interna)
         background_frame: numpy array do frame de fundo (opcional, usado para blur)
         watermark_data: dicionário com as configurações da marca d'água
+        current_time: tempo atual do vídeo para filtragem de legendas
         """
         video_image = Image.fromarray(video_frame.astype(np.uint8))
         
@@ -176,15 +177,26 @@ class VideoRenderer:
             # mas as legendas devem ser posicionadas diretamente na imagem final sem offset
             scale_factor = self.get_scale_factor()
             final_image = video_image.resize((self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT), Image.Resampling.LANCZOS)
-            # USER REQUEST: Aplica o mesmo offset que seria usado na moldura
             # Simula as dimensões com borda para calcular o offset correto
-            v_w_dummy, v_h_dummy, _ = self.calculate_video_dimensions(True, border_size_preview, is_preview=is_preview)
+            # v_w = OUTPUT_WIDTH * video_width_ratio
+            v_w_dummy = int(self.OUTPUT_WIDTH * self.video_width_ratio)
+            v_h_dummy = int(self.OUTPUT_HEIGHT * self.video_height_ratio)
             offset_x, offset_y = self.get_offsets(v_w_dummy, v_h_dummy)
 
         # 2. Desenhar legendas
         if subtitles:
             draw = ImageDraw.Draw(final_image)
             for sub in subtitles:
+                # Filtragem por tempo
+                start = sub.get("start_time", 0.0)
+                end = sub.get("end_time", 1000.0)
+                
+                # No preview, podemos querer ver a legenda selecionada mesmo fora do tempo
+                # Mas para ser profissional, vamos seguir o tempo. 
+                # Se o usuário quiser ver onde ela está, ele move o slider.
+                if not (start <= current_time <= end):
+                    continue
+
                 self.subtitle_renderer.draw_subtitle(
                     draw, 
                     sub, 
@@ -403,7 +415,8 @@ class VideoRenderer:
                     border_style,
                     emoji_scale,
                     background_frame=bg_frame,
-                    watermark_data=watermark_data
+                    watermark_data=watermark_data,
+                    current_time=t
                 )
             
             fps = clip.fps if clip.fps else 30.0
