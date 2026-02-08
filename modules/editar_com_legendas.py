@@ -30,6 +30,7 @@ class VideoRenderer:
         self.audio_manager = GerenciadorAudio()
         self.blur_intensity = 25
         self.enhancement_enabled = False
+        self.logo_cache = {}
 
     def apply_blur_opencv(self, frame):
         """Aplica blur em um frame usando OpenCV"""
@@ -212,47 +213,33 @@ class VideoRenderer:
             return
 
         try:
-            # Carregar logo
-            logo = Image.open(logo_path).convert("RGBA")
-            
-            # Calcular tamanho final
             base_scale = data.get("logo_scale", 0.2)
-            
-            # A escala deve ser relativa ao tamanho do vídeo de saída (1080p)
-            # Se scale_factor for diferente (ex: preview), ajustamos
-            # Mas o "scale" do usuário é relativo ao tamanho original da imagem ou ao vídeo?
-            # Vamos assumir que scale=1.0 significa tamanho original da imagem
-            
-            # Aplicar escala do usuário e escala do renderizador (preview vs final)
             final_scale = base_scale * scale_factor
             
-            new_w = int(logo.width * final_scale)
-            new_h = int(logo.height * final_scale)
-            
-            if new_w < 1 or new_h < 1:
-                return
+            cache_key = (logo_path, final_scale)
+            if cache_key in self.logo_cache:
+                logo = self.logo_cache[cache_key]
+            else:
+                # Carregar e redimensionar logo (apenas uma vez)
+                from PIL import Image
+                logo = Image.open(logo_path).convert("RGBA")
+                new_w = int(logo.width * final_scale)
+                new_h = int(logo.height * final_scale)
                 
-            logo = logo.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                if new_w < 1 or new_h < 1:
+                    return
+                    
+                logo = logo.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                self.logo_cache[cache_key] = logo
             
             # Calcular posição
-            # As coordenadas x, y vêm do usuário (baseado no vídeo interno)
-            # Precisamos somar o offset da borda
             user_x = data.get("logo_x", 50)
             user_y = data.get("logo_y", 50)
-            
-            # Ajustar coordenadas para a escala atual (se x,y forem absolutos em 1080p)
-            # Se x,y forem relativos ao vídeo interno (sem borda), precisamos escalar
-            # Vamos assumir que x,y são coordenadas no espaço do vídeo (antes do resize final)
-            # Mas o sistema de legendas usa coordenadas fixas baseadas em 360p? Não, usa coordenadas do vídeo.
-            
-            # O sistema de legendas recebe offset_x e offset_y que já consideram a escala e a borda.
-            # E as coordenadas da legenda são multiplicadas pelo scale_factor.
             
             final_x = int((user_x * scale_factor) + offset_x)
             final_y = int((user_y * scale_factor) + offset_y)
             
             # Colar logo (com transparência)
-            # Se final_image for RGB, precisamos usar mask
             final_image.paste(logo, (final_x, final_y), logo)
             
         except Exception as e:

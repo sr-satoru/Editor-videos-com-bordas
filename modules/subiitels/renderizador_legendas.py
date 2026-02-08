@@ -6,6 +6,125 @@ from PIL import Image, ImageDraw, ImageFont
 class RenderizadorLegendas:
     def __init__(self, gerenciador_emojis):
         self.gerenciador_emojis = gerenciador_emojis
+        self.cache = {}
+
+    def clear_cache(self):
+        self.cache = {}
+
+    def _get_cache_key(self, sub, scale_factor, emoji_scale):
+        return (
+            sub.get("text"), sub.get("font"), sub.get("size"),
+            sub.get("color"), sub.get("border"), sub.get("bg"),
+            sub.get("border_thickness"), scale_factor, emoji_scale
+        )
+
+    def _render_to_cache(self, sub, scale_factor, emoji_scale):
+        key = self._get_cache_key(sub, scale_factor, emoji_scale)
+        if key in self.cache:
+            return self.cache[key]
+
+        # Calcular dimensões necessárias para a imagem da legenda
+        font = self._get_font(sub["font"], int(sub["size"] * scale_factor))
+        text = sub["text"]
+        emoji_pattern = r'\[EMOJI:([^\]]+)\]'
+        lines = text.split('\n')
+        line_height = font.size + int(1 * scale_factor)
+        
+        # Primeiro passo: Medir tudo para saber o tamanho da imagem temporária
+        max_w = 0
+        for line in lines:
+            parts = re.split(emoji_pattern, line)
+            w = 0
+            for i, part in enumerate(parts):
+                if i % 2 == 0:
+                    if part:
+                        dummy = Image.new("RGBA", (1, 1))
+                        d = ImageDraw.Draw(dummy)
+                        bbox = d.textbbox((0, 0), part, font=font)
+                        w += bbox[2] - bbox[0]
+                else:
+                    if self.gerenciador_emojis.get_emoji(part):
+                        w += int(font.size * emoji_scale)
+            max_w = max(max_w, w)
+
+        total_height = len(lines) * line_height
+        
+        # Adicionar margem para bordas
+        border_thickness = sub.get("border_thickness", 2)
+        margin = int(border_thickness * scale_factor) + 5
+        canvas_w = max_w + margin * 2
+        canvas_h = total_height + margin * 2
+        
+        # Criar a imagem transparente
+        sub_img = Image.new("RGBA", (int(canvas_w), int(canvas_h)), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(sub_img)
+        
+        # Renderizar na imagem transparente
+        curr_y = margin + line_height // 2
+        for i, line in enumerate(lines):
+            line_w = 0
+            # Primeiro calcula largura da linha para centralizar no canvas se quiser, 
+            # mas vamos manter alinhado à esquerda no 'nosso' canvas por simplicidade
+            # e o draw_subtitle cuida do offset.
+            
+            # Aqui vamos centralizar a linha dentro do canvas_w para facilitar o paste centralizado
+            # mas o original alinha à esquerda dentro do bloco. Vamos seguir o original.
+            curr_x = margin
+            
+            if sub.get("bg"):
+                # Medir linha para o fundo
+                parts = re.split(emoji_pattern, line)
+                lw = 0
+                for k, p in enumerate(parts):
+                    if k % 2 == 0:
+                        if p:
+                            bbox = draw.textbbox((0, 0), p, font=font)
+                            lw += bbox[2] - bbox[0]
+                    else:
+                        if self.gerenciador_emojis.get_emoji(p): lw += int(font.size * emoji_scale)
+                draw.rectangle([curr_x-5, curr_y-font.size//2, curr_x+lw+5, curr_y+font.size//2], fill=sub["bg"])
+
+            parts = re.split(emoji_pattern, line)
+            for j, part in enumerate(parts):
+                if j % 2 == 0:
+                    if part:
+                        border = sub.get("border")
+                        if border and border != "" and border_thickness > 0:
+                            t = max(1, int(border_thickness * scale_factor))
+                            for dx in range(-t, t+1):
+                                for dy in range(-t, t+1):
+                                    if dx!=0 or dy!=0: draw.text((curr_x+dx, curr_y+dy), part, font=font, fill=border, anchor="lm")
+                        draw.text((curr_x, curr_y), part, font=font, fill=sub["color"], anchor="lm")
+                        bbox = draw.textbbox((0, 0), part, font=font)
+                        curr_x += bbox[2] - bbox[0]
+                else:
+                    emoji_img = self.gerenciador_emojis.get_emoji(part)
+                    if emoji_img:
+                        e_size = int(font.size * emoji_scale)
+                        e_img = emoji_img.resize((e_size, e_size), Image.Resampling.LANCZOS)
+                        sub_img.paste(e_img, (int(curr_x), int(curr_y - e_size//2)), e_img if e_img.mode == 'RGBA' else None)
+                        curr_x += e_size
+            curr_y += line_height
+
+        self.cache[key] = (sub_img, margin, max_w, total_height)
+        return self.cache[key]
+
+    def draw_subtitle(self, draw, sub, scale_factor=1.0, emoji_scale=1.0, offset_x=0, offset_y=0):
+        # Usar o cachê para obter a imagem da legenda
+        sub_img, margin, max_w, total_height = self._render_to_cache(sub, scale_factor, emoji_scale)
+        
+        # Calcular posição de colagem (centralizado conforme sub["x"], sub["y"])
+        # Originalmente: block_start_x = x - max_line_width // 2
+        # start_y = y - total_height // 2
+        
+        x = sub["x"] * scale_factor + offset_x
+        y = sub["y"] * scale_factor + offset_y
+        
+        paste_x = int(x - max_w // 2 - margin)
+        paste_y = int(y - total_height // 2 - margin)
+        
+        # Colar na imagem principal (o draw._image é a referência para o PIL.Image original)
+        draw._image.paste(sub_img, (paste_x, paste_y), sub_img)
 
     def _get_font(self, font_family, size):
         """Carrega a fonte correta dependendo do Sistema Operacional"""
@@ -44,111 +163,12 @@ class RenderizadorLegendas:
         except:
             return ImageFont.load_default()
 
-    def draw_subtitle(self, draw, sub, scale_factor=1.0, emoji_scale=1.0, offset_x=0, offset_y=0):
-        text = sub["text"]
-        x = sub["x"] * scale_factor + offset_x
-        y = sub["y"] * scale_factor + offset_y
-        color = sub["color"]
-        border = sub["border"]
-        bg = sub["bg"]
-        border_thickness = sub.get("border_thickness", 2)
-        
-        # Fonte
-        font = self._get_font(sub["font"], int(sub["size"] * scale_factor))
-
-        emoji_pattern = r'\[EMOJI:([^\]]+)\]'
-        lines = text.split('\n')
-        line_height = font.size + int(1 * scale_factor)
-        total_height = len(lines) * line_height
-        start_y = y - total_height // 2
-        
-        line_widths = []
-        max_line_width = 0
-        for line in lines:
-            parts = re.split(emoji_pattern, line)
-            w = 0
-            for i, part in enumerate(parts):
-                if i % 2 == 0:
-                    if part:
-                        bbox = draw.textbbox((0, 0), part, font=font)
-                        w += bbox[2] - bbox[0]
-                else:
-                    if self.gerenciador_emojis.get_emoji(part):
-                        w += int(font.size * emoji_scale)
-            line_widths.append(w)
-            max_line_width = max(max_line_width, w)
-
-        # Calcula a posição inicial do bloco de texto (centralizado horizontalmente)
-        block_start_x = x - max_line_width // 2
-
-        for i, line in enumerate(lines):
-            curr_y = start_y + i * line_height
-            # No simples.py, as linhas são alinhadas à esquerda dentro do bloco centralizado
-            curr_x = block_start_x
-            
-            if bg and bg != "":
-                draw.rectangle([curr_x-5, curr_y-font.size//2, curr_x+line_widths[i]+5, curr_y+font.size//2], fill=bg)
-            
-            parts = re.split(emoji_pattern, line)
-            for j, part in enumerate(parts):
-                if j % 2 == 0:
-                    if part:
-                        if border and border != "" and border_thickness > 0:
-                            t = max(1, int(border_thickness * scale_factor))
-                            for dx in range(-t, t+1):
-                                for dy in range(-t, t+1):
-                                    if dx!=0 or dy!=0: draw.text((curr_x+dx, curr_y+dy), part, font=font, fill=border, anchor="lm")
-                        draw.text((curr_x, curr_y), part, font=font, fill=color, anchor="lm")
-                        bbox = draw.textbbox((0, 0), part, font=font)
-                        curr_x += bbox[2] - bbox[0]
-                else:
-                    emoji_img = self.gerenciador_emojis.get_emoji(part)
-                    if emoji_img:
-                        e_size = int(font.size * emoji_scale)
-                        e_img = emoji_img.resize((e_size, e_size), Image.Resampling.LANCZOS)
-                        draw._image.paste(e_img, (int(curr_x), int(curr_y - e_size//2)), e_img if e_img.mode == 'RGBA' else None)
-                        curr_x += e_size
-
     def get_subtitle_bbox(self, sub, scale_factor=1.0, emoji_scale=1.0, offset_x=0, offset_y=0):
-        text = sub["text"]
+        # Usar o cachê para obter as dimensões rapidamente
+        _, _, max_w, total_height = self._render_to_cache(sub, scale_factor, emoji_scale)
+        
         x = sub["x"] * scale_factor + offset_x
         y = sub["y"] * scale_factor + offset_y
         
-        font = self._get_font(sub["font"], int(sub["size"] * scale_factor))
-            
-        emoji_pattern = r'\[EMOJI:([^\]]+)\]'
-        lines = text.split('\n')
-        line_height = font.size + int(1 * scale_factor)
-        total_height = len(lines) * line_height
-        start_y = y - total_height // 2
-        
-        max_w = 0
-        min_y = float('inf')
-        max_y = float('-inf')
-        
-        for i, line in enumerate(lines):
-            curr_y = start_y + i * line_height
-            parts = re.split(emoji_pattern, line)
-            w = 0
-            for j, part in enumerate(parts):
-                if j % 2 == 0:
-                    if part:
-                        # Usar uma imagem temporária pequena para medir o texto
-                        dummy = Image.new("RGB", (1, 1))
-                        d = ImageDraw.Draw(dummy)
-                        bbox = d.textbbox((0, 0), part, font=font)
-                        w += bbox[2] - bbox[0]
-                else:
-                    if self.gerenciador_emojis.get_emoji(part):
-                        w += int(font.size * emoji_scale)
-            max_w = max(max_w, w)
-            
-            # Calcular limites verticais baseado no anchor "lm" (left-middle)
-            # O texto é centralizado verticalmente em curr_y
-            text_top = curr_y - font.size // 2
-            text_bottom = curr_y + font.size // 2
-            min_y = min(min_y, text_top)
-            max_y = max(max_y, text_bottom)
-            
-        return (x - max_w//2, min_y, x + max_w//2, max_y)
+        return (x - max_w//2, y - total_height//2, x + max_w//2, y + total_height//2)
 

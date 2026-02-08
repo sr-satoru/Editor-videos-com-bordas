@@ -37,6 +37,7 @@ class VideoSelector:
         self.on_duration_changed = None
         self.on_time_changed = None
         self.on_playback_status_changed = None
+        self.post_process_callback = None
         self.last_update_time = 0
 
     def select_video(self):
@@ -86,6 +87,11 @@ class VideoSelector:
         try:
             # Pega o frame no tempo t
             frame = self.clip.get_frame(t)
+            
+            # Aplicar pós-processamento se houver (ex: legendas)
+            if self.post_process_callback:
+                frame = self.post_process_callback(frame)
+                
             img = Image.fromarray(frame)
             img = img.resize((360, 640))  # ajusta ao tamanho do canvas
             self.preview_image = ImageTk.PhotoImage(img)

@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
+import numpy as np
 
 from PIL import Image, ImageTk, ImageDraw
 
@@ -27,6 +28,9 @@ class Subtitles(ttk.Frame):
         
         self.renderer = RenderizadorLegendas(emoji_manager)
         self.editor = VideoEditor()
+        
+        from modules.editar_com_legendas import VideoRenderer
+        self.v_renderer = VideoRenderer(self.emoji_manager)
         
         # Estado de Drag-and-Drop
         self.selected_subtitle_idx = None
@@ -98,6 +102,9 @@ class Subtitles(ttk.Frame):
         canvas.bind("<B1-Motion>", self.on_preview_drag)
         canvas.bind("<ButtonRelease-1>", self.on_preview_release)
         canvas.bind("<Double-Button-1>", self.on_preview_double_click)
+        
+        # Registrar callback de renderização ao vivo
+        self.video_controls.video_selector.post_process_callback = self.render_live_preview
 
     def inserir_tag_emoji(self, tag):
         self.text_widget.insert(tk.INSERT, tag)
@@ -157,6 +164,46 @@ class Subtitles(ttk.Frame):
     def on_preview_double_click(self, event):
         if self.selected_subtitle_idx is not None:
             self.edit_subtitle()
+
+    def render_live_preview(self, frame):
+        """
+        Callback usado pelo VideoSelector para renderizar decorações (legendas, bordas)
+        sobre o frame do vídeo original em tempo real.
+        """
+        style = self.video_borders.get_effective_style()
+        border_color = self.video_borders.border_color
+        subtitles = self.subtitle_manager.get_subtitles()
+        border_size_preview = self.video_borders.border_size_var.get()
+        watermark_data = self.watermark_ui.get_state() if hasattr(self, 'watermark_ui') else None
+        
+        style_lower = style.lower()
+        border_enabled = "moldura" in style_lower or "black" in style_lower or "white" in style_lower or "blur" in style_lower
+        
+        # 1. Redimensionar frame original para a área interna
+        # Usamos BILINEAR no preview para ser mais rápido que LANCZOS
+        v_w, v_h, _ = self.v_renderer.calculate_video_dimensions(border_enabled, border_size_preview, is_preview=True)
+        video_resized = np.array(Image.fromarray(frame).resize((v_w, v_h), Image.Resampling.BILINEAR))
+        
+        # 2. Preparar fundo de blur se necessário
+        bg_frame = None
+        if "blur" in style_lower:
+            # Resize rápido para o fundo
+            bg_frame_raw = np.array(Image.fromarray(frame).resize((1080, 1920), Image.Resampling.NEAREST))
+            bg_frame = self.v_renderer.apply_blur_opencv(bg_frame_raw)
+            
+        # 3. Renderizar composição final (usando o cachê de legendas e logos)
+        return self.v_renderer.render_frame(
+            video_resized,
+            subtitles,
+            border_enabled,
+            border_size_preview,
+            border_color,
+            style,
+            background_frame=bg_frame,
+            watermark_data=watermark_data,
+            is_preview=True,
+            emoji_scale=self.comp_emojis.emoji_scale.get()
+        )
 
     # --- Lógica de Preview e Drag (Mantida aqui por ser o orquestrador do Canvas) ---
     def update_preview(self):
@@ -245,12 +292,10 @@ class Subtitles(ttk.Frame):
             if hasattr(self, 'watermark_ui') and self.watermark_ui:
                 watermark_data = self.watermark_ui.get_state()
                 if watermark_data.get("add_text_mark"):
-                    from modules.editar_com_legendas import VideoRenderer
-                    v_renderer = VideoRenderer(self.emoji_manager)
-                    v_renderer._draw_watermark(draw, watermark_data, scale, offset_x, offset_y)
+                    self.v_renderer._draw_watermark(draw, watermark_data, scale, offset_x, offset_y)
                     
                     # Cache do BBox para interação
-                    bbox = v_renderer.get_watermark_bbox(watermark_data, scale, offset_x, offset_y)
+                    bbox = self.v_renderer.get_watermark_bbox(watermark_data, scale, offset_x, offset_y)
                     if bbox:
                         if self.selected_watermark or self.dragging_watermark:
                             draw.rectangle(bbox, outline="cyan", width=2)
@@ -265,14 +310,11 @@ class Subtitles(ttk.Frame):
             if hasattr(self, 'watermark_ui') and self.watermark_ui:
                 watermark_data = self.watermark_ui.get_state()
                 if watermark_data.get("logo_path"):
-                    from modules.editar_com_legendas import VideoRenderer
-                    v_renderer = VideoRenderer(self.emoji_manager)
-                    
                     # Desenhar logo
-                    v_renderer._draw_logo(img, watermark_data, scale, offset_x, offset_y)
+                    self.v_renderer._draw_logo(img, watermark_data, scale, offset_x, offset_y)
                     
                     # BBox para interação
-                    bbox = v_renderer.get_logo_bbox(watermark_data, scale, offset_x, offset_y)
+                    bbox = self.v_renderer.get_logo_bbox(watermark_data, scale, offset_x, offset_y)
                     if bbox:
                         canvas_bbox = (bbox[0] + img_x, bbox[1] + img_y, bbox[2] + img_x, bbox[3] + img_y)
                         self.logo_bbox_cache = canvas_bbox
