@@ -116,13 +116,14 @@ class VideoRenderer:
                     pixels[x, y] = (r, g, b)
         return image
 
-    def render_frame(self, video_frame, subtitles, border_enabled, border_size_preview, border_color, border_style, emoji_scale=1.0, background_frame=None, is_preview=False, watermark_data=None, current_time=0.0):
+    def render_frame(self, video_frame, subtitles, border_enabled, border_size_preview, border_color, border_style, emoji_scale=1.0, background_frame=None, is_preview=False, watermark_data=None, current_time=0.0, video_duration=None):
         """
         Renderiza um único frame com bordas, legendas e marca d'água.
         video_frame: numpy array do frame do vídeo (já redimensionado para a área interna)
         background_frame: numpy array do frame de fundo (opcional, usado para blur)
         watermark_data: dicionário com as configurações da marca d'água
         current_time: tempo atual do vídeo para filtragem de legendas
+        video_duration: duração total do vídeo (usado para end_time padrão dinâmico)
         """
         video_image = Image.fromarray(video_frame.astype(np.uint8))
         
@@ -191,11 +192,18 @@ class VideoRenderer:
                 start = sub.get("start_time", 0.0)
                 end = sub.get("end_time", 1000.0)
                 
-                # No preview, podemos querer ver a legenda selecionada mesmo fora do tempo
-                # Mas para ser profissional, vamos seguir o tempo. 
-                # Se o usuário quiser ver onde ela está, ele move o slider.
-                if not (start <= current_time <= end):
-                    continue
+                # CORREÇÃO: Se end_time for o valor padrão (1000.0), usar a duração do vídeo
+                # Isso torna o end_time dinâmico baseado no vídeo atual
+                if end >= 1000.0 and video_duration is not None:
+                    end = video_duration
+                
+                # Verificar se está no intervalo de tempo
+                if current_time < start:
+                    continue  # Ainda não começou
+                    
+                # Verificar se já passou do end_time
+                if current_time >= end:
+                    continue  # Já terminou
 
                 self.subtitle_renderer.draw_subtitle(
                     draw, 
@@ -350,6 +358,14 @@ class VideoRenderer:
 
             clip = mp.VideoFileClip(input_path)
             
+            # IMPORTANTE: Capturar duração ORIGINAL do vídeo principal ANTES de qualquer modificação
+            # Isso garante que as legendas sejam renderizadas até o último frame do vídeo original
+            original_main_duration = clip.duration
+            fps = clip.fps if clip.fps else 30.0
+            total_frames_main = int(original_main_duration * fps)
+            
+            print(f"[DEBUG] Vídeo principal: {original_main_duration:.2f}s, {fps} fps, {total_frames_main} frames")
+            
             # 1. Lógica de Áudio
             final_audio = clip.audio
             if audio_settings:
@@ -406,9 +422,15 @@ class VideoRenderer:
                     raw_bg = background_clip.get_frame(t)
                     bg_frame = self.apply_blur_opencv(raw_bg)
                 
+                # CORREÇÃO: Ocultar legendas se estiver nos vídeos de mesclagem/CTA
+                # Usar duração ORIGINAL capturada antes de modificações (sync_duration, etc)
+                # Calcular frame atual e comparar com total de frames do vídeo principal
+                current_frame = int(t * fps)
+                subs_to_render = actual_subtitles if current_frame < total_frames_main else []
+                
                 return self.render_frame(
                     frame, 
-                    actual_subtitles, 
+                    subs_to_render, 
                     border_enabled, 
                     border_size_preview, 
                     border_color, 
@@ -416,10 +438,10 @@ class VideoRenderer:
                     emoji_scale,
                     background_frame=bg_frame,
                     watermark_data=watermark_data,
-                    current_time=t
+                    current_time=t,
+                    video_duration=original_main_duration
                 )
             
-            fps = clip.fps if clip.fps else 30.0
             final_clip = VideoClip(make_frame=make_frame, duration=clip.duration)
             final_clip = final_clip.set_fps(fps)
             

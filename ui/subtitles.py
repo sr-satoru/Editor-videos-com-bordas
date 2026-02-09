@@ -244,6 +244,11 @@ class Subtitles(ttk.Frame):
             bg_frame = self.v_renderer.apply_blur_opencv(bg_frame_raw)
             
         # 3. Renderizar composição final (usando o cachê de legendas e logos)
+        # Obter duração do vídeo para end_time dinâmico
+        video_duration = None
+        if hasattr(self.video_controls.video_selector, 'current_video_clip') and self.video_controls.video_selector.current_video_clip:
+            video_duration = self.video_controls.video_selector.current_video_clip.duration
+        
         return self.v_renderer.render_frame(
             video_resized,
             subtitles,
@@ -255,7 +260,8 @@ class Subtitles(ttk.Frame):
             watermark_data=watermark_data,
             is_preview=True,
             emoji_scale=self.comp_emojis.emoji_scale.get(),
-            current_time=self.video_controls.video_selector.current_time
+            current_time=self.video_controls.video_selector.current_time,
+            video_duration=video_duration
         )
 
     # --- Lógica de Preview e Drag (Mantida aqui por ser o orquestrador do Canvas) ---
