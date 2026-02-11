@@ -11,7 +11,6 @@ from modules.subiitels.calculo_posicao import canvas_para_video
 from modules.video_editor import VideoEditor
 
 # Componentes de UI
-from ui.dialogo_edicao import DialogoEdicaoLegenda
 from ui.componente_emojis import ComponenteEmojis
 from ui.componente_lista_legendas import ComponenteListaLegendas
 from ui.componente_estilo_legenda import ComponenteEstiloLegenda
@@ -62,6 +61,10 @@ class Subtitles(ttk.Frame):
         self.moldura_handles = {} # {id_canto: bbox}
         self.active_handle = None 
         
+        # Estado para Modo de Edição vs. Criação
+        self.editing_mode = False
+        self.temporary_subtitle = None  # Legenda temporária para preview em tempo real
+        
         self.setup_ui()
         self.setup_preview_bindings()
 
@@ -93,7 +96,8 @@ class Subtitles(ttk.Frame):
         # Botões de Ação Rápida
         btn_row = ttk.Frame(self)
         btn_row.pack(fill="x", padx=10, pady=5)
-        ttk.Button(btn_row, text="➕ Adicionar Legenda", command=self.add_subtitle).pack(side="left", fill="x", expand=True)
+        self.add_btn = ttk.Button(btn_row, text="➞ Adicionar Legenda", command=self.add_subtitle)
+        self.add_btn.pack(side="left", fill="x", expand=True)
 
         # 2. Componente de Emojis
         self.comp_emojis = ComponenteEmojis(self, self.emoji_manager, callback_inserir=self.inserir_tag_emoji)
@@ -120,46 +124,118 @@ class Subtitles(ttk.Frame):
 
     def on_style_change(self):
         """Atualiza os metadados da legenda selecionada em tempo real (fonte, cor, tempo)"""
-        if self.selected_subtitle_idx is not None:
-            estilo = self.comp_estilo.get_estilo()
+        # Verificar se comp_estilo já foi inicializado (evita erro durante setup_ui)
+        if not hasattr(self, 'comp_estilo'):
+            return
+            
+        estilo = self.comp_estilo.get_estilo()
+        
+        if self.editing_mode and self.selected_subtitle_idx is not None:
+            # Modo de edição: atualiza a legenda existente
             self.subtitle_manager.update_subtitle(self.selected_subtitle_idx, **estilo)
             self.comp_lista.refresh()
+            self.update_preview()
+        elif self.temporary_subtitle:
+            # Modo de criação: atualiza o preview temporário
+            self.temporary_subtitle.update({
+                'font': estilo['font'],
+                'size': estilo['size'],
+                'color': estilo['color'],
+                'border': estilo['border'],
+                'bg': estilo['bg'],
+                'border_thickness': estilo['border_thickness'],
+                'start_time': estilo.get('start_time', 0.0),
+                'end_time': estilo.get('end_time', 10.0)
+            })
             self.update_preview()
         else:
             # Se nada selecionado, apenas atualiza o preview (ex: preview sem vídeo)
             self.update_preview()
 
     def on_text_typing(self, event):
-        """Atualiza o texto da legenda selecionada em tempo real enquanto o usuário digita"""
-        if self.selected_subtitle_idx is not None:
-            new_text = self.text_widget.get("1.0", "end-1c")
+        """Atualiza o texto da legenda selecionada em tempo real (se em modo de edição) ou cria preview temporário"""
+        new_text = self.text_widget.get("1.0", "end-1c")
+        
+        if self.editing_mode and self.selected_subtitle_idx is not None:
+            # Modo de edição: atualiza a legenda existente
             self.subtitle_manager.update_subtitle(self.selected_subtitle_idx, text=new_text)
-            self.comp_lista.refresh() # Opcional: pode pesar se houver muitas legendas. 
-            # Para performance máxima, atualizaríamos apenas a linha específica na lista.
+            self.comp_lista.refresh()
+            self.update_preview()
+        else:
+            # Modo de criação: cria preview temporário
+            if new_text.strip():
+                estilo = self.comp_estilo.get_estilo()
+                self.temporary_subtitle = {
+                    "text": new_text,
+                    "font": estilo['font'],
+                    "size": estilo['size'],
+                    "color": estilo['color'],
+                    "border": estilo['border'],
+                    "bg": estilo['bg'],
+                    "border_thickness": estilo['border_thickness'],
+                    "x": 135,
+                    "y": 400,
+                    "start_time": estilo.get('start_time', 0.0),
+                    "end_time": estilo.get('end_time', 10.0)
+                }
+            else:
+                self.temporary_subtitle = None
             self.update_preview()
 
     def inserir_tag_emoji(self, tag):
         self.text_widget.insert(tk.INSERT, tag)
+    
+    def update_button_text(self):
+        """Atualiza o texto do botão com base no modo de edição"""
+        if self.editing_mode and self.selected_subtitle_idx is not None:
+            self.add_btn.config(text="✔️ Salvar Alterações")
+        else:
+            self.add_btn.config(text="➞ Adicionar Legenda")
+
 
     def add_subtitle(self):
         text = self.text_widget.get("1.0", "end-1c").strip()
         if not text: return
         
         estilo = self.comp_estilo.get_estilo()
-        self.subtitle_manager.add_subtitle(
-            text=text,
-            font=estilo['font'],
-            size=estilo['size'],
-            color=estilo['color'],
-            border_color=estilo['border'],
-            bg_color=estilo['bg'],
-            border_thickness=estilo['border_thickness'],
-            x=135, y=400,
-            start_time=estilo.get('start_time', 0.0),
-            end_time=estilo.get('end_time', 10.0)
-        )
+        
+        if self.editing_mode and self.selected_subtitle_idx is not None:
+            # Modo de edição: salvar alterações na legenda existente
+            self.subtitle_manager.update_subtitle(
+                self.selected_subtitle_idx,
+                text=text,
+                font=estilo['font'],
+                size=estilo['size'],
+                color=estilo['color'],
+                border=estilo['border'],
+                bg=estilo['bg'],
+                border_thickness=estilo['border_thickness'],
+                start_time=estilo.get('start_time', 0.0),
+                end_time=estilo.get('end_time', 10.0)
+            )
+        else:
+            # Modo de criação: adicionar nova legenda
+            self.subtitle_manager.add_subtitle(
+                text=text,
+                font=estilo['font'],
+                size=estilo['size'],
+                color=estilo['color'],
+                border_color=estilo['border'],
+                bg_color=estilo['bg'],
+                border_thickness=estilo['border_thickness'],
+                x=135, y=400,
+                start_time=estilo.get('start_time', 0.0),
+                end_time=estilo.get('end_time', 10.0)
+            )
+        
+        # Limpar e resetar estado
         self.text_widget.delete("1.0", "end")
+        self.temporary_subtitle = None
+        self.editing_mode = False
+        self.selected_subtitle_idx = None
+        self.comp_lista.set_selection(None)
         self.comp_lista.refresh()
+        self.update_button_text()
         self.update_preview()
 
     def on_list_select(self, event):
@@ -178,18 +254,37 @@ class Subtitles(ttk.Frame):
                 'start_time': sub.get('start_time', 0.0),
                 'end_time': sub.get('end_time', 10.0)
             })
-            # Carregar texto no widget
-            self.text_widget.delete("1.0", "end")
-            self.text_widget.insert("1.0", sub["text"])
+            # NÃO carregar texto no widget para evitar edição acidental
+            # O texto só será carregado ao dar duplo clique ou clicar em editar
+            self.editing_mode = False
+            self.temporary_subtitle = None
             
         self.update_preview()
+    
+    def clear_selection(self):
+        """Limpa a seleção e reseta o modo de edição"""
+        self.selected_subtitle_idx = None
+        self.editing_mode = False
+        self.temporary_subtitle = None
+        self.comp_lista.set_selection(None)
+        self.text_widget.delete("1.0", "end")
+        self.update_button_text()
+        self.update_preview()
+
 
     def remove_subtitle(self):
         idx = self.comp_lista.get_selection()
         if idx is not None:
             self.subtitle_manager.remove_subtitle(idx)
             self.selected_subtitle_idx = None
+            self.editing_mode = False
+            self.temporary_subtitle = None
+            # Limpar seleção da listbox
+            self.comp_lista.set_selection(None)
+            # Limpar campo de texto
+            self.text_widget.delete("1.0", "end")
             self.comp_lista.refresh()
+            self.update_button_text()
             self.update_preview()
 
     def edit_subtitle(self):
@@ -197,7 +292,17 @@ class Subtitles(ttk.Frame):
         if idx is None:
             messagebox.showwarning("Aviso", "Selecione uma legenda para editar.")
             return
-        DialogoEdicaoLegenda(self, idx, self.subtitle_manager, self.on_dialog_save)
+        
+        # Carregar texto da legenda no editor
+        sub = self.subtitle_manager.get_subtitles()[idx]
+        self.text_widget.delete("1.0", "end")
+        self.text_widget.insert("1.0", sub["text"])
+        
+        # Ativar modo de edição quando usuário explicitamente edita
+        self.editing_mode = True
+        self.temporary_subtitle = None
+        self.update_button_text()
+        self.update_preview()
 
     def on_dialog_save(self):
         self.comp_lista.refresh()
@@ -215,7 +320,17 @@ class Subtitles(ttk.Frame):
 
     def on_preview_double_click(self, event):
         if self.selected_subtitle_idx is not None:
-            self.edit_subtitle()
+            # Carregar texto da legenda no editor
+            sub = self.subtitle_manager.get_subtitles()[self.selected_subtitle_idx]
+            self.text_widget.delete("1.0", "end")
+            self.text_widget.insert("1.0", sub["text"])
+            
+            # Duplo clique ativa modo de edição
+            self.editing_mode = True
+            self.temporary_subtitle = None
+            # Não chamar edit_subtitle() pois já carregamos o texto e ativamos edição
+            self.update_button_text()
+            self.update_preview()
 
     def render_live_preview(self, frame):
         """
@@ -367,6 +482,14 @@ class Subtitles(ttk.Frame):
                 
                 canvas_bbox = (bbox[0] + img_x, bbox[1] + img_y, bbox[2] + img_x, bbox[3] + img_y)
                 self.subtitle_bbox_cache.append(canvas_bbox)
+            
+            # Renderizar legenda temporária (preview em tempo real)
+            if self.temporary_subtitle and not self.editing_mode:
+                self.renderer.draw_subtitle(draw, self.temporary_subtitle, scale_factor=scale, emoji_scale=self.comp_emojis.emoji_scale.get(), offset_x=offset_x, offset_y=offset_y)
+                bbox = self.renderer.get_subtitle_bbox(self.temporary_subtitle, scale_factor=scale, emoji_scale=self.comp_emojis.emoji_scale.get(), offset_x=offset_x, offset_y=offset_y)
+                # Desenhar com borda verde para indicar que é temporária
+                draw.rectangle(bbox, outline="lime", width=2)
+
 
             # --- Desenhar Marca d'Água em Texto ---
             self.watermark_bbox_cache = None

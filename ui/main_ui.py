@@ -198,7 +198,8 @@ class EditorUI(tk.Tk):
                 "subtitles": tab['subtitles'].get_state(),
                 "watermark": tab['watermark'].get_state(),
                 "audio": tab['audio'].get_state(),
-                "output": tab['output'].get_state()
+                "output": tab['output'].get_state(),
+                "mesclagem": tab['mesclagem'].get_state()  # Novo: vídeos de mesclagem/CTA
             }
             project_state.append(tab_state)
 
@@ -233,21 +234,55 @@ class EditorUI(tk.Tk):
         # Recriar abas
         tabs_to_load = project_state.get("tabs", []) if isinstance(project_state, dict) else project_state
         
-        for tab_state in tabs_to_load:
-            if not isinstance(tab_state, dict): continue
+        errors = []  # Lista para coletar erros de vídeos não encontrados
+        
+        for idx, tab_state in enumerate(tabs_to_load, start=1):
+            if not isinstance(tab_state, dict): 
+                continue
             
-            self.add_new_tab(tab_state.get("name", "Aba"))
+            tab_name = tab_state.get("name", f"Aba {idx}")
+            self.add_new_tab(tab_name)
             current_tab = self.tabs_data[-1]
             
-            # Aplicar estados
-            current_tab['video_controls'].set_state(tab_state.get("video_controls", {}))
+            # Aplicar estados com fallback para compatibilidade com JSONs antigos
+            # Video Controls - captura erro se vídeo não for encontrado
+            video_result = current_tab['video_controls'].set_state(tab_state.get("video_controls", {}))
+            if video_result and not video_result.get("success", True):
+                errors.append({
+                    "tab": idx,
+                    "tab_name": tab_name,
+                    "error": video_result.get("error"),
+                    "path": video_result.get("video_path")
+                })
+            
+            # Outros componentes (com fallback para JSONs antigos)
             current_tab['borders'].set_state(tab_state.get("borders", {}))
             current_tab['subtitles'].set_state(tab_state.get("subtitles", {}))
             current_tab['watermark'].set_state(tab_state.get("watermark", {}))
             current_tab['audio'].set_state(tab_state.get("audio", {}))
             current_tab['output'].set_state(tab_state.get("output", {}))
+            current_tab['mesclagem'].set_state(tab_state.get("mesclagem", {}))  # Novo campo com fallback
 
-        messagebox.showinfo("Sucesso", "Projeto importado com sucesso!")
+        # Mostrar avisos ou sucesso
+        if errors:
+            self.show_import_warnings(errors)
+        else:
+            messagebox.showinfo("Sucesso", "Projeto importado com sucesso!")
+
+    def show_import_warnings(self, errors):
+        """Mostra avisos de vídeos não encontrados durante importação"""
+        if not errors:
+            return
+        
+        message = "⚠️ Projeto importado com avisos:\n\n"
+        
+        for error in errors:
+            message += f"• {error['tab_name']}: {error['error']}\n"
+            message += f"  Caminho: {error['path']}\n\n"
+        
+        message += "As abas foram criadas, mas você precisa recarregar os vídeos manualmente."
+        
+        messagebox.showwarning("Avisos de Importação", message)
 
     def add_new_tab(self, tab_name):
         """Adiciona uma nova aba e popula com os módulos"""

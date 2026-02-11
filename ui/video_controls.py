@@ -125,10 +125,20 @@ class VideoControls(ttk.LabelFrame):
         }
 
     def set_state(self, state):
-        path = state.get("current_video_path")
-        if path:
-            self.video_selector.load_video(path)
+        import os
         
-        # Restaurar estado do enhancement
+        path = state.get("current_video_path")
         enhancement = state.get("enable_enhancement", False)
         self.enable_enhancement.set(enhancement)
+        
+        if path:
+            # Verificar se o arquivo existe
+            if os.path.exists(path):
+                self.video_selector.load_video(path)
+                return {"success": True, "video_path": path}
+            else:
+                # Vídeo não encontrado - retornar erro mas não falhar
+                return {"success": False, "video_path": path, "error": "Vídeo não encontrado"}
+        
+        return {"success": True, "video_path": ""}
+
