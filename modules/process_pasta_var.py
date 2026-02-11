@@ -1,19 +1,18 @@
 import os
 import threading
-import queue
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from modules.config_global import global_config
 
 class FolderProcessor:
-    _queue = queue.Queue()
-    _worker_thread = None
-    _is_processing = False
-
     def __init__(self, editor):
         self.editor = editor
 
     def get_videos_in_folder(self, folder_path):
         video_extensions = ('.mp4', '.mov', '.avi', '.mkv', '.webm')
+        image_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.webp', '.tiff')
+        all_extensions = video_extensions + image_extensions
         return [os.path.join(folder_path, f) for f in os.listdir(folder_path) 
-                if f.lower().endswith(video_extensions)]
+                if f.lower().endswith(all_extensions)]
 
     def process_folder(self, input_video_path, output_folder, style, color, subtitles, emoji_manager, audio_settings, status_callback, completion_callback, process_all_folder=True, watermark_data=None, mesclagem_data=None, tab_number=None, enable_enhancement=False, video_width_ratio=0.78, video_height_ratio=0.70):
         if process_all_folder:
@@ -23,86 +22,93 @@ class FolderProcessor:
             videos = [input_video_path]
         
         if not videos:
-            status_callback("Nenhum vídeo encontrado na pasta.")
-            completion_callback(0, 0, ["Nenhum vídeo encontrado na pasta."])
+            status_callback("Nenhum vídeo/imagem encontrado na pasta.")
+            completion_callback(0, 0, ["Nenhum vídeo/imagem encontrado na pasta."])
             return
 
-        # Adicionar vídeos à fila
-        for video_path in videos:
-            task = {
-                'video_path': video_path,
-                'output_folder': output_folder,
-                'style': style,
-                'color': color,
-                'subtitles': subtitles,
-                'emoji_manager': emoji_manager,
-                'audio_settings': audio_settings,
-                'watermark_data': watermark_data,
-                'mesclagem_data': mesclagem_data,
-                'status_callback': status_callback,
-                'completion_callback': completion_callback,
-                'total_in_batch': len(videos),
-                'tab_number': tab_number,
-                'enable_enhancement': enable_enhancement,
-                'video_width_ratio': video_width_ratio,
-                'video_height_ratio': video_height_ratio
-            }
-            FolderProcessor._queue.put(task)
-
-        status_callback(f"{len(videos)} vídeos adicionados à fila de espera.")
+        # Obter número de jobs paralelos e threads das configurações globais
+        max_workers = global_config.get("parallel_jobs")
+        num_threads = global_config.get("num_threads")
         
-        # Iniciar worker se não estiver rodando
-        if not FolderProcessor._worker_thread or not FolderProcessor._worker_thread.is_alive():
-            FolderProcessor._worker_thread = threading.Thread(target=self._worker, daemon=True)
-            FolderProcessor._worker_thread.start()
+        status_callback(f"🚀 Iniciando processamento de {len(videos)} arquivo(s) com {max_workers} job(s) simultâneo(s) e {num_threads} threads por job...")
+        
+        # Processar em paralelo usando ThreadPoolExecutor (ao invés de ProcessPoolExecutor)
+        # Threads compartilham memória, evitando problemas de serialização
+        threading.Thread(
+            target=self._process_parallel,
+            args=(videos, output_folder, style, color, subtitles, emoji_manager, 
+                  audio_settings, watermark_data, mesclagem_data, tab_number, 
+                  enable_enhancement, video_width_ratio, video_height_ratio,
+                  status_callback, completion_callback, max_workers, num_threads),
+            daemon=True
+        ).start()
 
-    def _worker(self):
-        FolderProcessor._is_processing = True
-        batch_results = {} # Para agrupar callbacks por lote se necessário
-
-        while True:
-            try:
-                # Tenta pegar uma tarefa com timeout para permitir que a thread morra se a fila ficar vazia
-                task = FolderProcessor._queue.get(timeout=5)
-                
-                video_path = task['video_path']
-                video_name = os.path.basename(video_path)
-                status_cb = task['status_callback']
-                
-                status_cb(f"Processando da fila: {video_name}")
-                
-                success, result = self.editor.render_video(
-                    video_path, 
-                    task['output_folder'], 
-                    task['style'], 
-                    task['color'], 
-                    task['subtitles'], 
-                    task['emoji_manager'], 
-                    task['audio_settings'],
-                    watermark_data=task.get('watermark_data'),
-                    mesclagem_data=task.get('mesclagem_data'),
-                    tab_number=task.get('tab_number'),
-                    enable_enhancement=task.get('enable_enhancement', False),
-                    video_width_ratio=task.get('video_width_ratio', 0.78),
-                    video_height_ratio=task.get('video_height_ratio', 0.70)
+    def _process_parallel(self, videos, output_folder, style, color, subtitles, 
+                         emoji_manager, audio_settings, watermark_data, mesclagem_data,
+                         tab_number, enable_enhancement, video_width_ratio, 
+                         video_height_ratio, status_callback, completion_callback, max_workers, num_threads):
+        """Processa vídeos em paralelo usando ThreadPoolExecutor"""
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        # Usar ThreadPoolExecutor ao invés de ProcessPoolExecutor
+        # Threads evitam problemas de serialização (pickle) de objetos complexos
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submeter todas as tasks
+            future_to_video = {}
+            for video_path in videos:
+                future = executor.submit(
+                    self._process_single_video,
+                    video_path, output_folder, style, color, subtitles,
+                    emoji_manager, audio_settings, watermark_data, mesclagem_data,
+                    tab_number, enable_enhancement, video_width_ratio, 
+                    video_height_ratio, num_threads
                 )
-                
-                # Aqui simplificamos: cada vídeo termina e avisa. 
-                # Para manter o comportamento original de 'completion_callback' por pasta,
-                # precisaríamos de uma lógica mais complexa de rastreamento de lotes.
-                # Por agora, vamos apenas notificar o status.
-                
-                if success:
-                    status_cb(f"Concluído: {video_name}")
-                else:
-                    status_cb(f"Erro em {video_name}: {result}")
-                
-                FolderProcessor._queue.task_done()
-                
-            except queue.Empty:
-                break
-            except Exception as e:
-                print(f"Erro no worker de processamento: {e}")
-                break
+                future_to_video[future] = os.path.basename(video_path)
+            
+            # Processar resultados conforme completam
+            for future in as_completed(future_to_video):
+                video_name = future_to_video[future]
+                try:
+                    success, result = future.result()
+                    if success:
+                        success_count += 1
+                        status_callback(f"✅ Concluído ({success_count}/{len(videos)}): {video_name}")
+                    else:
+                        error_count += 1
+                        errors.append(f"{video_name}: {result}")
+                        status_callback(f"❌ Erro ({error_count}/{len(videos)}): {video_name}")
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f"{video_name}: {str(e)}")
+                    status_callback(f"❌ Exceção ({error_count}/{len(videos)}): {video_name}")
         
-        FolderProcessor._is_processing = False
+        # Callback final
+        completion_callback(success_count, error_count, errors)
+
+    def _process_single_video(self, video_path, output_folder, style, color, subtitles,
+                              emoji_manager, audio_settings, watermark_data, mesclagem_data,
+                              tab_number, enable_enhancement, video_width_ratio, 
+                              video_height_ratio, num_threads):
+        """Processa um único vídeo (executado em thread separada)"""
+        try:
+            success, result = self.editor.render_video(
+                video_path,
+                output_folder,
+                style,
+                color,
+                subtitles,
+                emoji_manager,
+                audio_settings,
+                watermark_data=watermark_data,
+                mesclagem_data=mesclagem_data,
+                tab_number=tab_number,
+                enable_enhancement=enable_enhancement,
+                video_width_ratio=video_width_ratio,
+                video_height_ratio=video_height_ratio
+            )
+            return success, result
+        except Exception as e:
+            return False, str(e)

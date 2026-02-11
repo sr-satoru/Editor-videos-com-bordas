@@ -16,7 +16,7 @@ class VideoSelector:
         self.preview_canvas = preview_canvas
 
         # Botão de selecionar vídeo
-        self.btn = tk.Button(parent, text="Selecionar Vídeo", command=self.select_video)
+        self.btn = tk.Button(parent, text="Selecionar Vídeo/Imagem", command=self.select_video)
         self.btn.is_accent = True
         self.btn.pack(side="left", padx=10, pady=10)
 
@@ -41,9 +41,14 @@ class VideoSelector:
         self.last_update_time = 0
 
     def select_video(self):
-        # Abre diálogo para escolher vídeo
+        # Abre diálogo para escolher vídeo ou imagem
         filepath = filedialog.askopenfilename(
-            filetypes=[("Vídeos", "*.mp4 *.mov *.avi *.mkv")]
+            title="Selecionar Vídeo ou Imagem",
+            filetypes=[
+                ("Todos suportados", "*.mp4 *.mov *.avi *.mkv *.png *.jpg *.jpeg *.bmp *.webp *.tiff"),
+                ("Vídeos", "*.mp4 *.mov *.avi *.mkv"),
+                ("Imagens", "*.png *.jpg *.jpeg *.bmp *.webp *.tiff")
+            ]
         )
         if filepath:
             self.load_video(filepath)
