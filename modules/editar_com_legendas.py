@@ -9,6 +9,7 @@ from modules.audio.gerenciador_audio import GerenciadorAudio
 from modules import video_enhancement
 from modules import mesclagem_back
 from modules.config_global import global_config
+from modules.process_image import is_image_file, auto_convert_if_image
 
 class VideoRenderer:
     """
@@ -351,7 +352,15 @@ class VideoRenderer:
             threads = global_config.get("num_threads")
         """Renderiza o vídeo completo"""
         try:
-            # 0. Opção de Ocultar Legendas no Vídeo Principal
+            # 0. Detectar e converter imagem em vídeo automaticamente
+            original_input_path = input_path
+            input_path = auto_convert_if_image(input_path)
+            
+            # Se foi convertido, registrar no log
+            if input_path != original_input_path:
+                print(f"✓ Imagem convertida automaticamente: {os.path.basename(original_input_path)}")
+            
+            # 0.1 Opção de Ocultar Legendas no Vídeo Principal
             actual_subtitles = subtitles
             if mesclagem_data and mesclagem_data.get("hide_subtitles"):
                 actual_subtitles = []

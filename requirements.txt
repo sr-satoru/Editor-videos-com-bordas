@@ -4,6 +4,7 @@ Pillow
 opencv-python
 
 pygame
+psutil
 #opitional
 
 # torch

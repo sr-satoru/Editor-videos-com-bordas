@@ -6,9 +6,10 @@ CONFIG_FILE = "global_settings.json"
 DEFAULT_SETTINGS = {
     "num_threads": 4,
     "parallel_jobs": 1,
-    "global_subtitles_style": False,  # Se True, ignora estilo de cada aba e usa o padrão
     "default_output_path": "",
     "export_format": "mp4",
+    "image_to_video_duration": 5,  # Duração padrão em segundos para conversão de imagens
+    "global_image_to_video_settings": True,  # Aplicar configuração globalmente
 }
 
 class GlobalConfig:
