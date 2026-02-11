@@ -64,6 +64,8 @@ class Subtitles(ttk.Frame):
         # Estado para Modo de Edição vs. Criação
         self.editing_mode = False
         self.temporary_subtitle = None  # Legenda temporária para preview em tempo real
+        self.dragging_temporary = False  # Flag para arrastar legenda temporária
+        self.temporary_subtitle_bbox = None  # BBox da legenda temporária para detecção de clique
         
         self.setup_ui()
         self.setup_preview_bindings()
@@ -483,12 +485,17 @@ class Subtitles(ttk.Frame):
                 canvas_bbox = (bbox[0] + img_x, bbox[1] + img_y, bbox[2] + img_x, bbox[3] + img_y)
                 self.subtitle_bbox_cache.append(canvas_bbox)
             
+            
             # Renderizar legenda temporária (preview em tempo real)
+            self.temporary_subtitle_bbox = None
             if self.temporary_subtitle and not self.editing_mode:
                 self.renderer.draw_subtitle(draw, self.temporary_subtitle, scale_factor=scale, emoji_scale=self.comp_emojis.emoji_scale.get(), offset_x=offset_x, offset_y=offset_y)
                 bbox = self.renderer.get_subtitle_bbox(self.temporary_subtitle, scale_factor=scale, emoji_scale=self.comp_emojis.emoji_scale.get(), offset_x=offset_x, offset_y=offset_y)
                 # Desenhar com borda verde para indicar que é temporária
                 draw.rectangle(bbox, outline="lime", width=2)
+                # Salvar bbox em coordenadas do canvas para detecção de clique
+                self.temporary_subtitle_bbox = (bbox[0] + img_x, bbox[1] + img_y, bbox[2] + img_x, bbox[3] + img_y)
+
 
 
             # --- Desenhar Marca d'Água em Texto ---
@@ -616,7 +623,30 @@ class Subtitles(ttk.Frame):
                 self.update_preview()
                 return
 
-        # 2. Verificar Legendas
+        # 2. Verificar Legenda Temporária (prioridade sobre legendas permanentes)
+        if self.temporary_subtitle_bbox and not self.editing_mode:
+            bbox = self.temporary_subtitle_bbox
+            if bbox[0] <= x <= bbox[2] and bbox[1] <= y <= bbox[3]:
+                # Cálculo de offset dinâmico
+                v_w_p = 360.0 * self.video_borders.video_w_ratio_var.get()
+                v_h_p = 640.0 * self.video_borders.video_h_ratio_var.get()
+                off_x_v = (360.0 - v_w_p) / 2
+                off_y_v = (640.0 - v_h_p) / 2
+
+                self.dragging_temporary = True
+                self.selected_moldura = False
+                self.selected_subtitle_idx = None
+                self.selected_watermark = False
+                self.selected_logo = False
+                
+                click_v_x, click_v_y = canvas_para_video(x, y, self.preview_img_geometry, scale)
+                self.drag_offset_x = click_v_x - (self.temporary_subtitle["x"] + off_x_v)
+                self.drag_offset_y = click_v_y - (self.temporary_subtitle["y"] + off_y_v)
+                
+                self.update_preview()
+                return
+
+        # 3. Verificar Legendas Permanentes
         for i in range(len(self.subtitle_bbox_cache)-1, -1, -1):
             bbox = self.subtitle_bbox_cache[i]
             if bbox[0] <= x <= bbox[2] and bbox[1] <= y <= bbox[3]:
@@ -640,7 +670,7 @@ class Subtitles(ttk.Frame):
                 self.update_preview()
                 return
         
-        # 3. Verificar Marca d'Água e Logo
+        # 4. Verificar Marca d'Água e Logo
         v_w_p = 360.0 * self.video_borders.video_w_ratio_var.get()
         v_h_p = 640.0 * self.video_borders.video_h_ratio_var.get()
         off_x_v = (360.0 - v_w_p) / 2
@@ -749,6 +779,24 @@ class Subtitles(ttk.Frame):
             
             self.update_preview()
             
+        elif self.dragging_temporary:
+            # Arrastar legenda temporária
+            scale = self.preview_scale_factor
+            
+            v_w_p = 360.0 * self.video_borders.video_w_ratio_var.get()
+            v_h_p = 640.0 * self.video_borders.video_h_ratio_var.get()
+            border_offset_x = (360.0 - v_w_p) / 2
+            border_offset_y = (640.0 - v_h_p) / 2
+            
+            new_render_x, new_render_y = canvas_para_video(event.x, event.y, self.preview_img_geometry, scale)
+            new_video_x = new_render_x - self.drag_offset_x - border_offset_x
+            new_video_y = new_render_y - self.drag_offset_y - border_offset_y
+            
+            # Atualizar posição da legenda temporária
+            self.temporary_subtitle["x"] = int(new_video_x)
+            self.temporary_subtitle["y"] = int(new_video_y)
+            self.update_preview()
+            
         elif self.dragging_subtitle_idx is not None:
             scale = self.preview_scale_factor
             
@@ -806,6 +854,7 @@ class Subtitles(ttk.Frame):
 
     def on_preview_release(self, event):
         self.dragging_subtitle_idx = None
+        self.dragging_temporary = False
         self.dragging_watermark = False
         self.dragging_logo = False
         self.resizing_logo = False
