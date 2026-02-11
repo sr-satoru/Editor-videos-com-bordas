@@ -11,3 +11,4 @@ psutil
 # torchvision
 # gfpgan
 # basicsr
+plyer

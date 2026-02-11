@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import ttk, filedialog
 
@@ -5,6 +6,7 @@ from tkinter import messagebox
 from modules.video_editor import VideoEditor
 from modules.process_pasta_var import FolderProcessor
 import threading
+from modules.notifier import Notifier
 
 class OutputVideo(ttk.LabelFrame):
     def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings_ui, watermark_ui, mesclagem_ui, processar_pasta_var=None):
@@ -116,7 +118,7 @@ class OutputVideo(ttk.LabelFrame):
                 self.emoji_manager, 
                 audio_settings,
                 status_callback=lambda msg: self.status_label.config(text=msg),
-                completion_callback=lambda s, t, e: self.render_btn.config(state="normal"),
+                completion_callback=lambda s, t, e: self.on_single_render_complete(s, t, e, input_path),
                 process_all_folder=False,
                 watermark_data=watermark_data,
                 mesclagem_data=mesclagem_data,
@@ -139,6 +141,21 @@ class OutputVideo(ttk.LabelFrame):
             messagebox.showwarning("Processamento Concluído", f"Processados {success_count} de {total} vídeos.\n\nErros:\n{error_msg}")
         else:
             messagebox.showinfo("Sucesso", f"Todos os {total} vídeos foram processados com sucesso!")
+        
+        # Enviar Notificação Push
+        msg = f"Processados {success_count} de {total} vídeos."
+        if errors:
+            msg += f" ({len(errors)} erros)"
+        Notifier.notify("Renderização em Lote Finalizada", msg)
+
+    def on_single_render_complete(self, success_count, total, errors, input_path):
+        self.render_btn.config(state="normal")
+        video_name = os.path.basename(input_path)
+        
+        if success_count > 0:
+            Notifier.notify("Renderização Finalizada", f"O vídeo '{video_name}' foi renderizado com sucesso!")
+        elif errors:
+            Notifier.notify("Erro na Renderização", f"Falha ao renderizar '{video_name}'.")
 
     def run_render(self, input_path, output_folder, style, color, subtitles, emoji_manager, audio_settings):
         success, result = self.editor.render_video(input_path, output_folder, style, color, subtitles, emoji_manager, audio_settings)

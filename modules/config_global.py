@@ -10,6 +10,8 @@ DEFAULT_SETTINGS = {
     "export_format": "mp4",
     "image_to_video_duration": 5,  # Duração padrão em segundos para conversão de imagens
     "global_image_to_video_settings": True,  # Aplicar configuração globalmente
+    "notification_sound_path": "audio_notification/done1.mp3",  # Caminho para som de notificação personalizado
+    "notification_volume": 0.5,      # Volume da notificação (0.0 a 1.0)
 }
 
 class GlobalConfig:
