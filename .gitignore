@@ -12,7 +12,7 @@ json
 *.zip
 *.pyc
 *.json
-*.mp3
 # GFPGAN Models
 models/
 *.pth
+audio-2

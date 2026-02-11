@@ -6,6 +6,7 @@ from tkinter import messagebox
 from modules.video_editor import VideoEditor
 from modules.process_pasta_var import FolderProcessor
 import threading
+import time
 from modules.notifier import Notifier
 
 class OutputVideo(ttk.LabelFrame):
@@ -23,6 +24,7 @@ class OutputVideo(ttk.LabelFrame):
         self.processar_pasta_var = processar_pasta_var
         self.editor = VideoEditor()
         self.folder_processor = FolderProcessor(self.editor)
+        self.start_time = 0
 
         self.output_path = tk.StringVar()
 
@@ -85,6 +87,7 @@ class OutputVideo(ttk.LabelFrame):
         enable_enhancement = self.video_controls.enable_enhancement.get()
         
         self.render_btn.config(state="disabled")
+        self.start_time = time.time()
         
         if self.processar_pasta_var and self.processar_pasta_var.get():
             self.status_label.config(text="Iniciando processamento da pasta...")
@@ -142,8 +145,12 @@ class OutputVideo(ttk.LabelFrame):
         else:
             messagebox.showinfo("Sucesso", f"Todos os {total} vídeos foram processados com sucesso!")
         
+        # Calcular e formatar tempo total
+        duration_str = self._format_duration(time.time() - self.start_time)
+        print(f"\n[FINAL] Processamento em lote concluído em: {duration_str}")
+        
         # Enviar Notificação Push
-        msg = f"Processados {success_count} de {total} vídeos."
+        msg = f"Processados {success_count} de {total} vídeos em {duration_str}."
         if errors:
             msg += f" ({len(errors)} erros)"
         Notifier.notify("Renderização em Lote Finalizada", msg)
@@ -151,11 +158,20 @@ class OutputVideo(ttk.LabelFrame):
     def on_single_render_complete(self, success_count, total, errors, input_path):
         self.render_btn.config(state="normal")
         video_name = os.path.basename(input_path)
+        duration_str = self._format_duration(time.time() - self.start_time)
+        print(f"\n[FINAL] Renderização de '{video_name}' concluída em: {duration_str}")
         
         if success_count > 0:
-            Notifier.notify("Renderização Finalizada", f"O vídeo '{video_name}' foi renderizado com sucesso!")
+            Notifier.notify("Renderização Finalizada", f"O vídeo '{video_name}' foi renderizado em {duration_str}!")
         elif errors:
-            Notifier.notify("Erro na Renderização", f"Falha ao renderizar '{video_name}'.")
+            Notifier.notify("Erro na Renderização", f"Falha ao renderizar '{video_name}' após {duration_str}.")
+
+    def _format_duration(self, seconds):
+        if seconds < 60:
+            return f"{int(seconds)}s"
+        minutes = int(seconds // 60)
+        rem_seconds = int(seconds % 60)
+        return f"{minutes}m {rem_seconds}s"
 
     def run_render(self, input_path, output_folder, style, color, subtitles, emoji_manager, audio_settings):
         success, result = self.editor.render_video(input_path, output_folder, style, color, subtitles, emoji_manager, audio_settings)
