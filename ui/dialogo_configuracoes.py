@@ -5,15 +5,19 @@ import psutil
 from modules.config_global import global_config
 from ui.dialog_imagem_video import DialogImagemVideo
 from ui.componentes_custom import ToggleSwitch
+from ui.lotes_in_videos import LotesInVideos
 
 
 class DialogoConfiguracoes(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.title("Configurações Globais")
-        self.geometry("650x650")
+        self.geometry("1080x960")  # Aumentado para acomodar aba de lotes
         self.transient(parent)
         self.grab_set()
+        
+        # Referência ao editor principal
+        self.editor_ui = parent
         
         # Tema e Estilo
         self.colors = parent.theme_manager.get_current_colors()
@@ -38,9 +42,11 @@ class DialogoConfiguracoes(tk.Toplevel):
         # Criar abas
         self.tab_general = ttk.Frame(self.notebook, padding=15)
         self.tab_notifications = ttk.Frame(self.notebook, padding=15)
+        self.tab_lotes = LotesInVideos(self.notebook, self.editor_ui)
         
         self.notebook.add(self.tab_general, text=" ⚙️ Geral ")
         self.notebook.add(self.tab_notifications, text=" 🔔 Notificações ")
+        self.notebook.add(self.tab_lotes, text=" 📦 Lotes ")
         
         # Preencher abas
         self._create_general_tab()

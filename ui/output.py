@@ -10,7 +10,7 @@ import time
 from modules.notifier import Notifier
 
 class OutputVideo(ttk.LabelFrame):
-    def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings_ui, watermark_ui, mesclagem_ui, processar_pasta_var=None):
+    def __init__(self, parent, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings_ui, watermark_ui, mesclagem_ui, processar_pasta_var=None, editor_ui_ref=None):
         super().__init__(parent, text="Salvar Vídeo Processado", padding=10) # Adicionado padding interno
         self.pack(fill="x", pady=10, padx=10)
         
@@ -22,6 +22,7 @@ class OutputVideo(ttk.LabelFrame):
         self.watermark_ui = watermark_ui
         self.mesclagem_ui = mesclagem_ui
         self.processar_pasta_var = processar_pasta_var
+        self.editor_ui_ref = editor_ui_ref  # Referência ao EditorUI
         self.editor = VideoEditor()
         self.folder_processor = FolderProcessor(self.editor)
         self.start_time = 0
@@ -154,6 +155,10 @@ class OutputVideo(ttk.LabelFrame):
         if errors:
             msg += f" ({len(errors)} erros)"
         Notifier.notify("Renderização em Lote Finalizada", msg)
+        
+        # Notificar EditorUI que esta aba terminou
+        if self.editor_ui_ref and hasattr(self.editor_ui_ref, 'on_tab_render_complete'):
+            self.editor_ui_ref.on_tab_render_complete()
 
     def on_single_render_complete(self, success_count, total, errors, input_path):
         self.render_btn.config(state="normal")
@@ -165,7 +170,10 @@ class OutputVideo(ttk.LabelFrame):
             Notifier.notify("Renderização Finalizada", f"O vídeo '{video_name}' foi renderizado em {duration_str}!")
         elif errors:
             Notifier.notify("Erro na Renderização", f"Falha ao renderizar '{video_name}' após {duration_str}.")
-
+        
+        # Notificar EditorUI que esta aba terminou
+        if self.editor_ui_ref and hasattr(self.editor_ui_ref, 'on_tab_render_complete'):
+            self.editor_ui_ref.on_tab_render_complete()
     def _format_duration(self, seconds):
         if seconds < 60:
             return f"{int(seconds)}s"

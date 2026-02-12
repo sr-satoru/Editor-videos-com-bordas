@@ -144,11 +144,25 @@ class EditorUI(tk.Tk):
             title="Selecionar Vídeo/Imagem para Todas as Abas"
         )
         if filepath:
-            for tab in self.tabs_data:
-                tab['video_controls'].video_selector.load_video(filepath)
-                # Forçar atualização do preview se necessário
-                tab['subtitles'].update_preview()
+            self.load_video_all_tabs_from_path(filepath)
             messagebox.showinfo("Sucesso", f"Vídeo carregado em {len(self.tabs_data)} abas.")
+    
+    def load_video_all_tabs_from_path(self, filepath: str):
+        """Carrega vídeo em todas as abas sem diálogo (usado pelo BatchQueueManager)"""
+        for tab in self.tabs_data:
+            tab['video_controls'].video_selector.load_video(filepath)
+            # Forçar atualização do preview se necessário
+            tab['subtitles'].update_preview()
+    
+    def change_all_output_path_direct(self, folder: str):
+        """Altera pasta de saída sem diálogo (usado pelo BatchQueueManager)"""
+        for tab in self.tabs_data:
+            tab['output'].output_path.set(folder)
+    
+    def change_all_audio_folder_direct(self, folder: str):
+        """Altera pasta de áudio sem diálogo (usado pelo BatchQueueManager)"""
+        for tab in self.tabs_data:
+            tab['audio'].audio_folder_path.set(folder)
 
     def remove_current_tab(self):
         """Remove a aba atualmente selecionada"""
@@ -175,9 +189,27 @@ class EditorUI(tk.Tk):
         self.add_new_tab(f"Aba {next_idx}")
 
     def render_all_tabs(self):
-        """Chama o render de todas as abas abertas"""
+        """Chama o render de todas as abas abertas e rastreia conclusão"""
+        # Resetar contador de abas concluídas
+        self.tabs_rendered_count = 0
+        self.total_tabs_to_render = len(self.tabs_data)
+        
         for idx, tab in enumerate(self.tabs_data, start=1):
             tab['output'].start_rendering(tab_number=idx)
+    
+    def on_tab_render_complete(self):
+        """Callback chamado quando uma aba termina de renderizar"""
+        self.tabs_rendered_count += 1
+        print(f"[MainUI] Aba {self.tabs_rendered_count}/{self.total_tabs_to_render} concluída")
+        
+        # Verificar se todas as abas terminaram
+        if self.tabs_rendered_count >= self.total_tabs_to_render:
+            print("[MainUI] Todas as abas foram renderizadas!")
+            
+            # Notificar BatchQueueManager se estiver ativo
+            from modules.batch_queue_manager import batch_queue_manager
+            if batch_queue_manager.is_active:
+                batch_queue_manager.on_batch_complete(success=True)
 
     def save_project(self):
         """Salva o estado de todas as abas em um JSON"""
@@ -367,7 +399,7 @@ class EditorUI(tk.Tk):
         
         mesclagem_ui = MesclagemFront(scroll_frame, video_controls) # Novo Módulo de Finalizadores
         
-        output_video = OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings, watermark_ui, mesclagem_ui, processar_pasta_var=self.processar_pasta_var)
+        output_video = OutputVideo(scroll_frame, video_controls, video_borders, subtitle_manager, emoji_manager, audio_settings, watermark_ui, mesclagem_ui, processar_pasta_var=self.processar_pasta_var, editor_ui_ref=self)
         
         self.tabs_data.append({
             'frame': new_tab,
