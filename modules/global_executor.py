@@ -49,6 +49,18 @@ class GlobalRenderExecutor:
         
         return self._executor
     
+    def reset_executor(self):
+        """
+        Reseta o executor, forçando a criação de um novo pool na próxima renderização.
+        Útil quando o usuário muda parallel_jobs nas configurações.
+        """
+        if self._executor is not None:
+            with self._executor_lock:
+                if self._executor is not None:
+                    print("[GlobalExecutor] Resetando pool para aplicar novas configurações")
+                    self._executor.shutdown(wait=False)  # Não espera jobs pendentes terminarem
+                    self._executor = None
+    
     def shutdown(self, wait=True):
         """Encerra o executor global"""
         if self._executor is not None:

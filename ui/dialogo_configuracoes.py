@@ -247,6 +247,10 @@ class DialogoConfiguracoes(tk.Toplevel):
             jobs = int(self.jobs_var.get())
             duration = int(self.duration_var.get())
             
+            # Verificar se parallel_jobs mudou para resetar o pool
+            old_jobs = global_config.get("parallel_jobs")
+            jobs_changed = (old_jobs != jobs)
+            
             # Determinar path final do som
             selected = self.local_sounds_var.get()
             if selected == "🔇 Sem Som (Mudo)":
@@ -266,7 +270,13 @@ class DialogoConfiguracoes(tk.Toplevel):
             global_config.set("notification_sound_path", sound_path)
             global_config.set("notification_volume", self.volume_var.get())
             
-            messagebox.showinfo("Sucesso", "✓ Configurações salvas com sucesso!")
+            # Resetar o executor global se parallel_jobs mudou
+            if jobs_changed:
+                from modules.global_executor import global_executor
+                global_executor.reset_executor()
+                print(f"[Config] Pool de workers será recriado com {jobs} workers na próxima renderização")
+            
+            messagebox.showinfo("Sucesso", "✓ Configurações salvas com sucesso!\n\nAs mudanças foram aplicadas imediatamente.")
             self.destroy()
             
         except ValueError:
