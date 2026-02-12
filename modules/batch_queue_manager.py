@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Callable
 from dataclasses import dataclass, asdict
+from modules.render_orchestrator import render_orchestrator
 
 
 @dataclass
@@ -50,7 +51,7 @@ class BatchQueueManager:
         self.batches: List[Batch] = []
         self.current_batch_index: int = 0
         self.is_paused: bool = False
-        self.is_active: bool = False
+        self.is_active: bool = False  # Nunca persistir como True no JSON
         
         # Callbacks
         self.on_status_change: Optional[Callable] = None
@@ -122,13 +123,17 @@ class BatchQueueManager:
             print("[BatchQueue] Nenhum lote na fila para processar")
             return False
         
+        # Se já está ativa, não faz nada mas também não bloqueia se for um restart limpo
         if self.is_active:
-            print("[BatchQueue] Fila já está ativa")
-            return False
-        
+            print("[BatchQueue] Fila já está ativa, reiniciando fluxo...")
+            self.is_active = False
+            
         self.is_active = True
         self.is_paused = False
         self.current_batch_index = 0
+        
+        # Sincronizar com orquestrador
+        render_orchestrator.set_busy(True)
         
         # Processar primeiro lote
         self._process_current_batch()
@@ -170,6 +175,10 @@ class BatchQueueManager:
         
         self.save_to_file()
         self._notify_status_change()
+        
+        # Sincronizar com orquestrador
+        render_orchestrator.set_busy(False)
+        
         print("[BatchQueue] Fila parada")
     
     def on_batch_complete(self, success: bool, error_message: Optional[str] = None):
@@ -204,6 +213,10 @@ class BatchQueueManager:
         if self.current_batch_index >= len(self.batches):
             print("[BatchQueue] 🎉 Todos os lotes foram processados!")
             self.is_active = False
+            
+            # Sincronizar com orquestrador
+            render_orchestrator.set_busy(False)
+            
             self.save_to_file()
             self._notify_status_change()
             
@@ -266,9 +279,9 @@ class BatchQueueManager:
                 print(f"[BatchQueue] Mudando pasta de áudio: {batch.audio_folder}")
                 self.editor_ui.change_all_audio_folder_direct(batch.audio_folder)
             
-            # 4. Iniciar renderização de todas as abas
+            # 4. Iniciar renderização de todas as abas (SEM perguntar sobre lotes novamente)
             print(f"[BatchQueue] Iniciando renderização de todas as abas...")
-            self.editor_ui.render_all_tabs()
+            self.editor_ui.render_all_tabs_core()
             
         except Exception as e:
             print(f"[BatchQueue] ERRO ao aplicar lote: {e}")
@@ -306,7 +319,7 @@ class BatchQueueManager:
                 "batches": [batch.to_dict() for batch in self.batches],
                 "current_batch_index": self.current_batch_index,
                 "is_paused": self.is_paused,
-                "is_active": self.is_active
+                "is_active": False  # Sempre salvar como inativo
             }
             
             with open(self._STATE_FILE, 'w', encoding='utf-8') as f:

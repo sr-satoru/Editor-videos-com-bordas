@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from modules.batch_queue_manager import batch_queue_manager
+from modules.render_orchestrator import render_orchestrator
 
 
 class LotesInVideos(ttk.Frame):
@@ -324,13 +325,8 @@ class LotesInVideos(ttk.Frame):
             return
         
         item = selection[0]
-        batch_id = self.tree.item(item, "values")[0] if self.tree.item(item, "values") else None
-        
-        # Batch ID está armazenado no item
-        batch_id = self.tree.set(item, "#0")  # Pegamos do identificador interno
-        
-        # Encontrar batch pelo índice
         index = self.tree.index(item)
+        
         if index < len(self.batch_manager.batches):
             batch = self.batch_manager.batches[index]
             
@@ -392,63 +388,77 @@ class LotesInVideos(ttk.Frame):
     
     def update_ui(self):
         """Atualiza a interface baseado no estado atual"""
-        # Limpar lista
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
-        # Preencher lista
-        for batch in self.batch_manager.batches:
-            status_icon = {
-                "pending": "⏳",
-                "processing": "▶️",
-                "completed": "✅",
-                "error": "❌"
-            }.get(batch.status, "❓")
+        # Proteção: Verifica se o widget ainda existe (evita erro se diálogo fechado)
+        if not self.winfo_exists():
+            return
+
+        # Garantir que a atualização ocorra na thread principal
+        def _perform_update():
+            if not self.winfo_exists():
+                return
+                
+            # Limpar lista
+            for item in self.tree.get_children():
+                self.tree.delete(item)
             
-            import os
-            input_display = os.path.basename(batch.input_path)
-            output_display = os.path.basename(batch.output_folder) or batch.output_folder
-            audio_display = os.path.basename(batch.audio_folder) if batch.audio_folder else "(padrão)"
-            
-            self.tree.insert(
-                "",
-                "end",
-                values=(
-                    status_icon,
-                    batch.name,
-                    input_display,
-                    output_display,
-                    audio_display
+            # Preencher lista
+            for batch in self.batch_manager.batches:
+                status_icon = {
+                    "pending": "⏳",
+                    "processing": "▶️",
+                    "completed": "✅",
+                    "error": "❌"
+                }.get(batch.status, "❓")
+                
+                import os
+                input_display = os.path.basename(batch.input_path)
+                output_display = os.path.basename(batch.output_folder) or batch.output_folder
+                audio_display = os.path.basename(batch.audio_folder) if batch.audio_folder else "(padrão)"
+                
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        status_icon,
+                        batch.name,
+                        input_display,
+                        output_display,
+                        audio_display
+                    )
                 )
-            )
-        
-        # Atualizar status e progress bars
-        stats = self.batch_manager.get_statistics()
-        
-        if self.batch_manager.is_active:
-            current_batch = self.batch_manager.get_current_batch()
-            if current_batch:
+            
+            # Atualizar status e progress bars
+            stats = self.batch_manager.get_statistics()
+            
+            if self.batch_manager.is_active or render_orchestrator.is_active:
+                current_batch = self.batch_manager.get_current_batch()
+                if current_batch and self.batch_manager.is_active:
+                    self.status_label.config(
+                        text=f"📊 Lote {self.batch_manager.current_batch_index + 1}/{stats['total']} - {current_batch.name}"
+                    )
+                elif render_orchestrator.is_active:
+                    self.status_label.config(text="📊 Renderização manual em curso...")
+                
+                # Progress global (só se batch manager estiver ativo)
+                if self.batch_manager.is_active and stats['total'] > 0:
+                    progress_pct = (stats['completed'] / stats['total']) * 100
+                    self.global_progress['value'] = progress_pct
+                
+                # Botões
+                self.start_btn.config(state="disabled")
+                self.pause_btn.config(state="normal" if self.batch_manager.is_active else "disabled")
+                self.stop_btn.config(state="normal" if self.batch_manager.is_active else "disabled")
+            else:
                 self.status_label.config(
-                    text=f"📊 Lote {self.batch_manager.current_batch_index + 1}/{stats['total']} - {current_batch.name}"
+                    text=f"📊 {stats['completed']}/{stats['total']} concluídos | {stats['errors']} erros"
                 )
-            
-            # Progress global
-            if stats['total'] > 0:
-                progress_pct = (stats['completed'] / stats['total']) * 100
-                self.global_progress['value'] = progress_pct
-            
-            # Botões
-            self.start_btn.config(state="disabled")
-            self.pause_btn.config(state="normal")
-            self.stop_btn.config(state="normal")
-        else:
-            self.status_label.config(
-                text=f"📊 {stats['completed']}/{stats['total']} concluídos | {stats['errors']} erros"
-            )
-            self.global_progress['value'] = 0
-            self.current_progress['value'] = 0
-            
-            # Botões
-            self.start_btn.config(state="normal")
-            self.pause_btn.config(state="disabled")
-            self.stop_btn.config(state="disabled")
+                self.global_progress['value'] = 0
+                self.current_progress['value'] = 0
+                
+                # Botões
+                self.start_btn.config(state="normal")
+                self.pause_btn.config(state="disabled")
+                self.stop_btn.config(state="disabled")
+
+        # Agendar execução na thread principal do Tkinter
+        self.after(0, _perform_update)

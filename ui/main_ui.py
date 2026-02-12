@@ -100,10 +100,11 @@ class EditorUI(tk.Tk):
 
     def build_ui(self):
         # ---------- FOOTER (Primeiro para garantir espaço embaixo) ----------
+        from modules.render_orchestrator import render_orchestrator
         Footer(self, 
                add_tab_callback=self.add_new_tab_with_auto_name,
                remove_tab_callback=self.remove_current_tab,
-               render_all_callback=self.render_all_tabs,
+               render_all_callback=lambda: render_orchestrator.start_render_flow(self),
                save_callback=self.save_project,
                load_callback=self.load_project,
                change_all_output_callback=self.change_all_output_path,
@@ -188,8 +189,8 @@ class EditorUI(tk.Tk):
         next_idx = self.notebook.index("end") + 1
         self.add_new_tab(f"Aba {next_idx}")
 
-    def render_all_tabs(self):
-        """Chama o render de todas as abas abertas e rastreia conclusão"""
+    def render_all_tabs_core(self):
+        """Execução técnica da renderização de todas as abas (sem prompts)"""
         # Resetar contador de abas concluídas
         self.tabs_rendered_count = 0
         self.total_tabs_to_render = len(self.tabs_data)
@@ -198,18 +199,23 @@ class EditorUI(tk.Tk):
             tab['output'].start_rendering(tab_number=idx)
     
     def on_tab_render_complete(self):
-        """Callback chamado quando uma aba termina de renderizar"""
-        self.tabs_rendered_count += 1
-        print(f"[MainUI] Aba {self.tabs_rendered_count}/{self.total_tabs_to_render} concluída")
-        
-        # Verificar se todas as abas terminaram
-        if self.tabs_rendered_count >= self.total_tabs_to_render:
-            print("[MainUI] Todas as abas foram renderizadas!")
+        """Callback chamado quando uma aba termina de renderizar (Thread-Safe)"""
+        def _safe_finish_logic():
+            # Apenas um incremento atômico na thread principal evita condições de corrida
+            self.tabs_rendered_count += 1
+            print(f"[MainUI] Aba {self.tabs_rendered_count}/{self.total_tabs_to_render} concluída")
             
-            # Notificar BatchQueueManager se estiver ativo
-            from modules.batch_queue_manager import batch_queue_manager
-            if batch_queue_manager.is_active:
-                batch_queue_manager.on_batch_complete(success=True)
+            # Verificar se todas as abas terminaram (usamos == para garantir disparo único)
+            if hasattr(self, 'total_tabs_to_render') and self.tabs_rendered_count == self.total_tabs_to_render:
+                print("[MainUI] Todas as abas foram renderizadas!")
+                # Resetar total para evitar re-execução se ABA for reportada duas vezes por erro técnico
+                self.total_tabs_to_render = -1 
+                
+                from modules.render_orchestrator import render_orchestrator
+                render_orchestrator.on_all_tabs_finished(self)
+        
+        # Agendar para rodar na thread principal
+        self.after(0, _safe_finish_logic)
 
     def save_project(self):
         """Salva o estado de todas as abas em um JSON"""
