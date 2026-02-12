@@ -134,10 +134,14 @@ class EditorUI(tk.Tk):
             messagebox.showinfo("Sucesso", f"Pasta de áudio alterada em {len(self.tabs_data)} abas.")
 
     def load_video_all_tabs(self):
-        """Carrega o mesmo vídeo em todas as abas"""
+        """Carrega o mesmo vídeo ou imagem em todas as abas"""
         filepath = filedialog.askopenfilename(
-            filetypes=[("Vídeos", "*.mp4 *.mov *.avi *.mkv")],
-            title="Selecionar Vídeo para Todas as Abas"
+            filetypes=[
+                ("Vídeos e Imagens", "*.mp4 *.mov *.avi *.mkv *.jpg *.jpeg *.png"),
+                ("Vídeos", "*.mp4 *.mov *.avi *.mkv"),
+                ("Imagens", "*.jpg *.jpeg *.png")
+            ],
+            title="Selecionar Vídeo/Imagem para Todas as Abas"
         )
         if filepath:
             for tab in self.tabs_data:

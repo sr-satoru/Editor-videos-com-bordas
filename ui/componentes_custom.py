@@ -15,6 +15,10 @@ class ToggleSwitch(tk.Canvas):
         self.handle_color = "#ffffff"
         
         self.bind("<Button-1>", self._toggle)
+        
+        # Adicionar trace para redesenhar quando a variável mudar (fix para set_state)
+        self.variable.trace_add("write", lambda *args: self._draw())
+        
         self._draw()
 
     def _draw(self):
