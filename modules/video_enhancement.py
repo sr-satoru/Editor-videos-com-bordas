@@ -26,21 +26,18 @@ MODEL_PATH = os.path.join(MODELS_DIR, "GFPGANv1.4.pth")
 def is_available() -> bool:
     """
     Verifica se o GFPGAN está disponível (modelo existe e dependências instaladas).
+    Silencioso por padrão - só emite mensagens se realmente for usado.
     """
     try:
         import torch
         import gfpgan
         
-        # Verificar se o modelo existe
+        # Verificar se o modelo existe (silenciosamente)
         if not os.path.exists(MODEL_PATH):
-            print(f"{NAME}: Modelo GFPGAN não encontrado em {MODEL_PATH}")
-            print(f"{NAME}: Execute 'python setup_gfpgan.py' para baixar o modelo.")
             return False
         
         return True
-    except ImportError as e:
-        print(f"{NAME}: Dependências não instaladas: {e}")
-        print(f"{NAME}: Execute 'pip install -r requirements.txt'")
+    except ImportError:
         return False
 
 

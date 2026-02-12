@@ -47,43 +47,47 @@ class FolderProcessor:
                          emoji_manager, audio_settings, watermark_data, mesclagem_data,
                          tab_number, enable_enhancement, video_width_ratio, 
                          video_height_ratio, status_callback, completion_callback, max_workers, num_threads):
-        """Processa vídeos em paralelo usando ThreadPoolExecutor"""
+        """Processa vídeos em paralelo usando o Executor Global Compartilhado"""
+        
+        from modules.global_executor import global_executor
         
         success_count = 0
         error_count = 0
         errors = []
         
-        # Usar ThreadPoolExecutor ao invés de ProcessPoolExecutor
-        # Threads evitam problemas de serialização (pickle) de objetos complexos
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submeter todas as tasks
-            future_to_video = {}
-            for video_path in videos:
-                future = executor.submit(
-                    self._process_single_video,
-                    video_path, output_folder, style, color, subtitles,
-                    emoji_manager, audio_settings, watermark_data, mesclagem_data,
-                    tab_number, enable_enhancement, video_width_ratio, 
-                    video_height_ratio, num_threads
-                )
-                future_to_video[future] = os.path.basename(video_path)
-            
-            # Processar resultados conforme completam
-            for future in as_completed(future_to_video):
-                video_name = future_to_video[future]
-                try:
-                    success, result = future.result()
-                    if success:
-                        success_count += 1
-                        status_callback(f"✅ Concluído ({success_count}/{len(videos)}): {video_name}")
-                    else:
-                        error_count += 1
-                        errors.append(f"{video_name}: {result}")
-                        status_callback(f"❌ Erro ({error_count}/{len(videos)}): {video_name}")
-                except Exception as e:
+        # Usar o executor global compartilhado de toda a aplicação
+        # Isso permite que múltiplas abas submetam jobs para o mesmo pool
+        executor = global_executor.get_executor()
+        
+        # Submeter todas as tasks para o pool global
+        future_to_video = {}
+        for video_path in videos:
+            future = executor.submit(
+                self._process_single_video,
+                video_path, output_folder, style, color, subtitles,
+                emoji_manager, audio_settings, watermark_data, mesclagem_data,
+                tab_number, enable_enhancement, video_width_ratio, 
+                video_height_ratio, num_threads
+            )
+            future_to_video[future] = os.path.basename(video_path)
+        
+        # Processar resultados conforme completam
+        from concurrent.futures import as_completed
+        for future in as_completed(future_to_video):
+            video_name = future_to_video[future]
+            try:
+                success, result = future.result()
+                if success:
+                    success_count += 1
+                    status_callback(f"✅ Concluído ({success_count}/{len(videos)}): {video_name}")
+                else:
                     error_count += 1
-                    errors.append(f"{video_name}: {str(e)}")
-                    status_callback(f"❌ Exceção ({error_count}/{len(videos)}): {video_name}")
+                    errors.append(f"{video_name}: {result}")
+                    status_callback(f"❌ Erro ({error_count}/{len(videos)}): {video_name}")
+            except Exception as e:
+                error_count += 1
+                errors.append(f"{video_name}: {str(e)}")
+                status_callback(f"❌ Exceção ({error_count}/{len(videos)}): {video_name}")
         
         # Callback final
         completion_callback(success_count, error_count, errors)
