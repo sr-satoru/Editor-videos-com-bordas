@@ -31,7 +31,15 @@ class PoolLotesUI(ttk.LabelFrame):
         list_container = ttk.Frame(self)
         list_container.pack(fill="both", expand=True)
         
-        self.listbox = tk.Listbox(list_container, height=4, font=("Segoe UI", 9))
+        self.listbox = tk.Listbox(
+            list_container, 
+            height=4, 
+            font=("Segoe UI", 9),
+            bg="#2c3e50",
+            fg="#ecf0f1",
+            selectbackground="#3498db",
+            selectforeground="#ffffff"
+        )
         self.listbox.pack(side="left", fill="both", expand=True)
         
         scrollbar = ttk.Scrollbar(list_container, orient="vertical", command=self.listbox.yview)
@@ -54,6 +62,7 @@ class PoolLotesUI(ttk.LabelFrame):
 
     def _add_media(self):
         filepaths = filedialog.askopenfilenames(
+            parent=self.winfo_toplevel(),
             title="Selecionar Mídias Adicionais para o Pool",
             filetypes=[
                 ("Todos Suportados", "*.mp4 *.mov *.avi *.mkv *.png *.jpg *.jpeg *.bmp *.webp"),

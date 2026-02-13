@@ -72,11 +72,18 @@ class Notifier:
             except Exception as e:
                 print(f"Erro ao enviar via Plyer: {e}")
 
-        # Fallback para notify-send no Linux
+        # Fallback para notify-send no Linux com prioridade crítica
         if not success and os.name == 'posix':
             try:
                 import subprocess
-                subprocess.run(['notify-send', title, message], check=False)
+                # Adiciona urgência crítica para aparecer sobre qualquer janela
+                subprocess.run([
+                    'notify-send', 
+                    '-u', 'critical',  # Urgência crítica
+                    '-t', '10000',      # 10 segundos
+                    title, 
+                    message
+                ], check=False)
             except Exception as e:
                 print(f"Erro ao enviar via notify-send: {e}")
 

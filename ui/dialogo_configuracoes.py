@@ -5,7 +5,7 @@ import psutil
 from modules.config_global import global_config
 from ui.dialog_imagem_video import DialogImagemVideo
 from ui.componentes_custom import ToggleSwitch
-from ui.lotes_in_videos import LotesInVideos
+from ui.lotes import AbaLotes
 from ui.gerenciador_filas import GerenciadorFilas
 from ui.polls_lotes import PoolLotesUI
 
@@ -44,7 +44,7 @@ class DialogoConfiguracoes(tk.Toplevel):
         # Criar abas
         self.tab_general = ttk.Frame(self.notebook, padding=15)
         self.tab_notifications = ttk.Frame(self.notebook, padding=15)
-        self.tab_lotes = LotesInVideos(self.notebook, self.editor_ui)
+        self.tab_lotes = AbaLotes(self.notebook, self.editor_ui)
         self.tab_arquivos_lotes = GerenciadorFilas(self.notebook, self.editor_ui)
         self.tab_pool_abas = PoolLotesUI(self.notebook, self.editor_ui.global_tab_pool.to_dict())
         self.tab_pool_abas.config(text=" 🎬 Pool de Mídias (Abas) ")
