@@ -92,6 +92,13 @@ class LotesInVideos(ttk.Frame):
         
         ttk.Button(
             buttons_frame,
+            text="✏️ Editar Lote",
+            command=self.edit_batch_dialog,
+            width=18
+        ).pack(pady=5)
+        
+        ttk.Button(
+            buttons_frame,
             text="➖ Remover",
             command=self.remove_batch,
             width=18
@@ -182,131 +189,131 @@ class LotesInVideos(ttk.Frame):
         
         progress_frame.columnconfigure(1, weight=1)
     
+    def edit_batch_dialog(self):
+        """Abre o diálogo de edição para o lote selecionado"""
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showwarning("Aviso", "Selecione um lote para editar")
+            return
+            
+        item = selection[0]
+        index = self.tree.index(item)
+        
+        if index < len(self.batch_manager.batches):
+            batch = self.batch_manager.batches[index]
+            self.batch_dialog(batch_to_edit=batch)
+
     def add_batch_dialog(self):
-        """Abre diálogo para adicionar novo lote"""
+        """Abre o diálogo para adicionar novo lote"""
+        self.batch_dialog()
+
+    def batch_dialog(self, batch_to_edit=None):
+        """Diálogo unificado para Adicionar/Editar Lote"""
+        from ui.polls_lotes import PoolLotesUI
+        
         dialog = tk.Toplevel(self)
-        dialog.title("Adicionar Lote")
-        dialog.geometry("780x540")
+        is_edit = batch_to_edit is not None
+        dialog.title("Editar Lote" if is_edit else "Adicionar Lote")
+        dialog.geometry("820x680")
         dialog.transient(self.winfo_toplevel())
         dialog.grab_set()
         
         # Centralizar
         dialog.update_idletasks()
-        x = (dialog.winfo_screenwidth() // 2) - (780 // 2)
-        y = (dialog.winfo_screenheight() // 2) - (540 // 2)
-        dialog.geometry(f"780x540+{x}+{y}")
+        x = (dialog.winfo_screenwidth() // 2) - (820 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (680 // 2)
+        dialog.geometry(f"820x680+{x}+{y}")
         
         # Frame principal
         main_frame = ttk.Frame(dialog, padding=20)
         main_frame.pack(fill="both", expand=True)
         
         # Nome do lote
-        ttk.Label(main_frame, text="Nome do Lote (opcional):").grid(row=0, column=0, sticky="w", pady=5)
-        name_var = tk.StringVar()
+        ttk.Label(main_frame, text="Nome do Lote:*").grid(row=0, column=0, sticky="w", pady=5)
+        name_var = tk.StringVar(value=batch_to_edit.name if is_edit else "")
         ttk.Entry(main_frame, textvariable=name_var, width=40).grid(row=0, column=1, sticky="ew", pady=5, padx=(10, 0))
         
         # Vídeo/Pasta de entrada
         ttk.Label(main_frame, text="Vídeo/Pasta de Entrada:*", foreground="red").grid(row=1, column=0, sticky="w", pady=5)
-        input_var = tk.StringVar()
+        input_var = tk.StringVar(value=batch_to_edit.input_path if is_edit else "")
         input_entry = ttk.Entry(main_frame, textvariable=input_var, width=40)
         input_entry.grid(row=1, column=1, sticky="ew", pady=5, padx=(10, 0))
         
         btn_frame1 = ttk.Frame(main_frame)
         btn_frame1.grid(row=2, column=1, sticky="w", padx=(10, 0))
-        ttk.Button(
-            btn_frame1,
-            text="Escolher Arquivo",
-            command=lambda: self._browse_file(input_var, dialog),
-            width=15
-        ).pack(side="left", padx=(0, 5))
-        ttk.Button(
-            btn_frame1,
-            text="Escolher Pasta",
-            command=lambda: self._browse_folder(input_var, dialog),
-            width=15
-        ).pack(side="left")
+        ttk.Button(btn_frame1, text="Escolher Arquivo", command=lambda: self._browse_file(input_var, dialog), width=15).pack(side="left", padx=(0, 5))
+        ttk.Button(btn_frame1, text="Escolher Pasta", command=lambda: self._browse_folder(input_var, dialog), width=15).pack(side="left")
         
         # Pasta de saída
         ttk.Label(main_frame, text="Pasta de Saída:*", foreground="red").grid(row=3, column=0, sticky="w", pady=(15, 5))
-        output_var = tk.StringVar()
+        output_var = tk.StringVar(value=batch_to_edit.output_folder if is_edit else "")
         ttk.Entry(main_frame, textvariable=output_var, width=40).grid(row=3, column=1, sticky="ew", pady=(15, 5), padx=(10, 0))
-        ttk.Button(
-            main_frame,
-            text="Escolher Pasta",
-            command=lambda: self._browse_folder(output_var, dialog),
-            width=15
-        ).grid(row=4, column=1, sticky="w", padx=(10, 0))
+        ttk.Button(main_frame, text="Escolher Pasta", command=lambda: self._browse_folder(output_var, dialog), width=15).grid(row=4, column=1, sticky="w", padx=(10, 0))
         
         # Pasta de áudio (opcional)
-        use_audio_var = tk.BooleanVar(value=False)
-        audio_var = tk.StringVar()
+        initial_audio = batch_to_edit.audio_folder if is_edit else None
+        use_audio_var = tk.BooleanVar(value=initial_audio is not None)
+        audio_var = tk.StringVar(value=initial_audio if initial_audio else "")
         
         audio_check = ttk.Checkbutton(
-            main_frame,
-            text="Usar pasta de áudio personalizada",
-            variable=use_audio_var,
+            main_frame, text="Usar pasta de áudio personalizada", variable=use_audio_var,
             command=lambda: audio_entry.config(state="normal" if use_audio_var.get() else "disabled")
         )
         audio_check.grid(row=5, column=0, columnspan=2, sticky="w", pady=(15, 5))
         
-        audio_entry = ttk.Entry(main_frame, textvariable=audio_var, width=40, state="disabled")
+        audio_entry = ttk.Entry(main_frame, textvariable=audio_var, width=40, state="normal" if use_audio_var.get() else "disabled")
         audio_entry.grid(row=6, column=1, sticky="ew", pady=5, padx=(10, 0))
+        ttk.Button(main_frame, text="Escolher Pasta", command=lambda: self._browse_folder(audio_var, dialog), width=15).grid(row=7, column=1, sticky="w", padx=(10, 0))
         
-        ttk.Button(
-            main_frame,
-            text="Escolher Pasta",
-            command=lambda: self._browse_folder(audio_var, dialog),
-            width=15
-        ).grid(row=7, column=1, sticky="w", padx=(10, 0))
+        # --- SISTEMA DE POOL (POOL LOTES) ---
+        pool_frame = ttk.Frame(main_frame)
+        pool_frame.grid(row=9, column=0, columnspan=2, sticky="ew", pady=15)
         
-        # Tooltip
-        tooltip = ttk.Label(
-            main_frame,
-            text="💡 Se desmarcado, usa a pasta de áudio configurada em cada aba",
-            font=("Segoe UI", 8),
-            foreground="gray"
-        )
-        tooltip.grid(row=8, column=0, columnspan=2, sticky="w", pady=5)
+        # Se for novo, podemos sugerir herdar da aba ativa
+        initial_pool = None
+        if is_edit:
+            initial_pool = batch_to_edit.media_pool_data
+        else:
+            active_tab_idx = self.editor_ui.notebook.index("current")
+            aba_pool = self.editor_ui.tabs_data[active_tab_idx]['video_controls'].video_selector.pool_manager
+            if aba_pool.enabled:
+                initial_pool = aba_pool.to_dict()
         
+        self.pool_lotes_ui = PoolLotesUI(pool_frame, initial_pool_data=initial_pool)
+        self.pool_lotes_ui.pack(fill="x", expand=True)
+
         main_frame.columnconfigure(1, weight=1)
         
         # Botões de ação
         action_frame = ttk.Frame(dialog, padding=(20, 0, 20, 20))
         action_frame.pack(fill="x", side="bottom")
         
-        def add_batch():
+        def save_action():
             input_path = input_var.get().strip()
             output_path = output_var.get().strip()
-            
-            if not input_path:
-                messagebox.showwarning("Aviso", "Selecione um vídeo ou pasta de entrada")
+            if not input_path or not output_path:
+                messagebox.showwarning("Aviso", "Campos obrigatórios (*) não preenchidos")
                 return
             
-            if not output_path:
-                messagebox.showwarning("Aviso", "Selecione uma pasta de saída")
-                return
-            
-            name = name_var.get().strip()
+            name = name_var.get().strip() or f"Lote {len(self.batch_manager.batches) + 1}"
             audio_folder = audio_var.get().strip() if use_audio_var.get() else None
+            media_pool = self.pool_lotes_ui.get_pool_data() if self.pool_lotes_ui.pool_manager.enabled else None
             
-            self.batch_manager.add_batch(name, input_path, output_path, audio_folder)
-            messagebox.showinfo("Sucesso", f"Lote '{name or 'Lote ' + str(len(self.batch_manager.batches))}' adicionado!")
+            if is_edit:
+                self.batch_manager.update_batch(
+                    batch_to_edit.id, name=name, input_path=input_path, 
+                    output_folder=output_path, audio_folder=audio_folder,
+                    media_pool_data=media_pool
+                )
+                messagebox.showinfo("Sucesso", "Lote atualizado com sucesso!")
+            else:
+                self.batch_manager.add_batch(name, input_path, output_path, audio_folder, media_pool)
+                messagebox.showinfo("Sucesso", "Novo lote adicionado!")
+                
             dialog.destroy()
         
-        ttk.Button(
-            action_frame,
-            text="Adicionar",
-            command=add_batch,
-            style="Accent.TButton",
-            width=12
-        ).pack(side="right", padx=5)
-        
-        ttk.Button(
-            action_frame,
-            text="Cancelar",
-            command=dialog.destroy,
-            width=12
-        ).pack(side="right")
+        ttk.Button(action_frame, text="Salvar" if is_edit else "Adicionar", command=save_action, style="Accent.TButton", width=12).pack(side="right", padx=5)
+        ttk.Button(action_frame, text="Cancelar", command=dialog.destroy, width=12).pack(side="right")
     
     def _browse_file(self, var, parent=None):
         """Abre diálogo para selecionar arquivo"""

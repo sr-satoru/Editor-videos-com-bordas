@@ -18,6 +18,7 @@ class Batch:
     audio_folder: Optional[str] = None
     status: str = "pending"  # pending, processing, completed, error
     error_message: Optional[str] = None
+    media_pool_data: Optional[Dict] = None # Dados do pool de mídias
     created_at: str = None
     completed_at: Optional[str] = None
     
@@ -60,6 +61,7 @@ class BatchQueueManager:
         
         # Referência ao EditorUI
         self.editor_ui = None
+        self.pool_backend = None # Inicializado em set_editor_ui
         
         self._initialized = True
         self.load_from_file()
@@ -114,16 +116,20 @@ class BatchQueueManager:
     def set_editor_ui(self, editor_ui):
         """Define referência ao EditorUI para poder chamar render_all_tabs()"""
         self.editor_ui = editor_ui
+        from modules.polls_batch_backend import BatchPoolBackend
+        self.pool_backend = BatchPoolBackend(editor_ui)
     
     def add_batch(self, name: str, input_path: str, output_folder: str, 
-                  audio_folder: Optional[str] = None) -> Batch:
+                  audio_folder: Optional[str] = None, 
+                  media_pool_data: Optional[Dict] = None) -> Batch:
         """Adiciona um novo lote à fila"""
         batch = Batch(
             id=str(uuid.uuid4()),
             name=name if name else f"Lote {len(self.batches) + 1}",
             input_path=input_path,
             output_folder=output_folder,
-            audio_folder=audio_folder
+            audio_folder=audio_folder,
+            media_pool_data=media_pool_data
         )
         self.batches.append(batch)
         self.save_to_file()
@@ -135,6 +141,18 @@ class BatchQueueManager:
         for i, batch in enumerate(self.batches):
             if batch.id == batch_id:
                 self.batches.pop(i)
+                self.save_to_file()
+                self._notify_status_change()
+                return True
+        return False
+
+    def update_batch(self, batch_id: str, **kwargs) -> bool:
+        """Atualiza campos de um lote existente"""
+        for batch in self.batches:
+            if batch.id == batch_id:
+                for key, value in kwargs.items():
+                    if hasattr(batch, key):
+                        setattr(batch, key, value)
                 self.save_to_file()
                 self._notify_status_change()
                 return True
@@ -227,6 +245,10 @@ class BatchQueueManager:
         # Sincronizar com orquestrador
         render_orchestrator.set_busy(False)
         
+        # Restaurar pools das abas
+        if self.pool_backend:
+            self.pool_backend.restore_original_pools()
+            
         print("[BatchQueue] Fila parada")
     
     def on_batch_complete(self, success: bool, error_message: Optional[str] = None):
@@ -265,12 +287,20 @@ class BatchQueueManager:
             # Sincronizar com orquestrador
             render_orchestrator.set_busy(False)
             
+            # Restaurar pools das abas ao finalizar a fila toda
+            if self.pool_backend:
+                self.pool_backend.restore_original_pools()
+
             self.save_to_file()
             self._notify_status_change()
             
             if self.on_queue_complete:
                 self.on_queue_complete()
             
+            # Restaurar pools das abas ao finalizar a fila toda
+            if self.pool_backend:
+                self.pool_backend.restore_original_pools()
+
             # Enviar notificação
             from modules.notifier import Notifier
             completed = sum(1 for b in self.batches if b.status == "completed")
@@ -314,8 +344,12 @@ class BatchQueueManager:
             return
         
         try:
-            # 1. Carregar vídeo/pasta em todas as abas
-            print(f"[BatchQueue] Carregando vídeo: {batch.input_path}")
+            # 1. Aplicar Pool do Lote (E salvar originais)
+            if self.pool_backend:
+                self.pool_backend.apply_batch_pool(batch.media_pool_data)
+            
+            # 2. Carregar vídeo base em todas as abas
+            print(f"[BatchQueue] Carregando vídeo base: {batch.input_path}")
             self.editor_ui.load_video_all_tabs_from_path(batch.input_path)
             
             # 2. Mudar pasta de saída em todas as abas

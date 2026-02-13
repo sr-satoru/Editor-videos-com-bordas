@@ -7,6 +7,8 @@ from tkinter import filedialog
 from moviepy.editor import VideoFileClip, vfx
 from PIL import Image, ImageTk
 
+
+
 class VideoSelector:
     def __init__(self, parent, preview_canvas):
         """
@@ -14,6 +16,7 @@ class VideoSelector:
         preview_canvas: canvas onde o preview do vídeo vai aparecer
         """
         self.preview_canvas = preview_canvas
+
 
         # Botão de selecionar vídeo
         self.btn = tk.Button(parent, text="Selecionar Vídeo/Imagem", command=self.select_video)
@@ -33,10 +36,6 @@ class VideoSelector:
         self.loop_enabled = False
         pygame.mixer.init()
         
-        # Callbacks
-        self.on_duration_changed = None
-        self.on_time_changed = None
-        self.on_playback_status_changed = None
         self.post_process_callback = None
         self.last_update_time = 0
 
@@ -195,6 +194,7 @@ class VideoSelector:
 
         # Agenda próximo ciclo (target ~30fps)
         self.update_job = self.preview_canvas.after(30, self._update_loop)
+
 
     def close(self):
         try:

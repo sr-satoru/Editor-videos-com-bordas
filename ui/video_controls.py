@@ -18,6 +18,8 @@ class VideoControls(ttk.LabelFrame):
         self.video_selector.on_playback_status_changed = self.update_play_btn
 
         # Frame de Controles de Playback
+
+        # Frame de Controles de Playback
         playback_frame = ttk.Frame(self)
         playback_frame.pack(fill="x", padx=10, pady=(5, 5))
 
@@ -118,7 +120,7 @@ class VideoControls(ttk.LabelFrame):
             return f"{m:02d}:{s:02d}"
         self.time_label.config(text=f"{fmt(current)} / {fmt(total)}")
 
-    def get_state(self):
+
         return {
             "current_video_path": self.video_selector.current_video_path,
             "enable_enhancement": self.enable_enhancement.get()

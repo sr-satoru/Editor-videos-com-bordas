@@ -7,6 +7,7 @@ from ui.dialog_imagem_video import DialogImagemVideo
 from ui.componentes_custom import ToggleSwitch
 from ui.lotes_in_videos import LotesInVideos
 from ui.gerenciador_filas import GerenciadorFilas
+from ui.polls_lotes import PoolLotesUI
 
 
 class DialogoConfiguracoes(tk.Toplevel):
@@ -45,9 +46,12 @@ class DialogoConfiguracoes(tk.Toplevel):
         self.tab_notifications = ttk.Frame(self.notebook, padding=15)
         self.tab_lotes = LotesInVideos(self.notebook, self.editor_ui)
         self.tab_arquivos_lotes = GerenciadorFilas(self.notebook, self.editor_ui)
+        self.tab_pool_abas = PoolLotesUI(self.notebook, self.editor_ui.global_tab_pool.to_dict())
+        self.tab_pool_abas.config(text=" 🎬 Pool de Mídias (Abas) ")
         
         self.notebook.add(self.tab_general, text=" ⚙️ Geral ")
         self.notebook.add(self.tab_notifications, text=" 🔔 Notificações ")
+        self.notebook.add(self.tab_pool_abas, text=" 🎬 Pool (Abas) ")
         self.notebook.add(self.tab_lotes, text=" 📦 Lotes ")
         self.notebook.add(self.tab_arquivos_lotes, text=" 📂 Arquivos Lotes ")
         
@@ -278,6 +282,11 @@ class DialogoConfiguracoes(tk.Toplevel):
                 from modules.global_executor import global_executor
                 global_executor.reset_executor()
                 print(f"[Config] Pool de workers será recriado com {jobs} workers na próxima renderização")
+            
+            # Salvar pool global das abas
+            pool_data = self.tab_pool_abas.get_pool_data()
+            from modules.media_pool_manager import MediaPoolManager
+            self.editor_ui.global_tab_pool = MediaPoolManager.from_dict(pool_data)
             
             messagebox.showinfo("Sucesso", "✓ Configurações salvas com sucesso!\n\nAs mudanças foram aplicadas imediatamente.")
             self.destroy()

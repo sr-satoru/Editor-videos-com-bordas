@@ -17,6 +17,7 @@ from tkinter import filedialog, messagebox
 
 from modules.subiitels.gerenciador_legendas import GerenciadorLegendas
 from modules.subiitels.gerenciador_emojis import GerenciadorEmojis
+from modules.media_pool_manager import MediaPoolManager
 
 class EditorUI(tk.Tk):
     def __init__(self):
@@ -27,6 +28,7 @@ class EditorUI(tk.Tk):
         self.tabs_data = []
 
         self.theme_manager = ThemeManager(self)
+        self.global_tab_pool = MediaPoolManager() # Pool global para processamento de abas
         self.create_header()
         self.build_ui()
 
@@ -195,6 +197,23 @@ class EditorUI(tk.Tk):
         self.tabs_rendered_count = 0
         self.total_tabs_to_render = len(self.tabs_data)
         
+        # --- LÓGICA DE POOL DE MÍDIAS (DISTRIBUIÇÃO SEQUENCIAL) ---
+        # AQUI usamos o POOL GLOBAL das abas, mas APENAS se não estivermos rodando um Lote (Batch)
+        from modules.batch_queue_manager import batch_queue_manager
+        
+        if not batch_queue_manager.is_active and self.global_tab_pool.enabled:
+            print(f"[MainUI] Pool Global de Abas ativo. Distribuindo entre {self.total_tabs_to_render} abas...")
+            try:
+                for i, tab in enumerate(self.tabs_data):
+                    video_path = self.global_tab_pool.get_video_for_index(i)
+                    if video_path:
+                        # Carrega o vídeo na aba de forma silenciosa e atualiza o preview
+                        tab['video_controls'].video_selector.load_video(video_path)
+                        tab['subtitles'].update_preview()
+            except Exception as e:
+                print(f"[MainUI] Erro ao aplicar pool global: {e}")
+        # ---------------------------------------------------------
+
         for idx, tab in enumerate(self.tabs_data, start=1):
             tab['output'].start_rendering(tab_number=idx)
     
@@ -231,7 +250,11 @@ class EditorUI(tk.Tk):
         if not file_path:
             return
 
-        project_state = []
+        project_data = {
+            "global_tab_pool": self.global_tab_pool.to_dict(),
+            "tabs": []
+        }
+        
         for tab in self.tabs_data:
             tab_state = {
                 "name": self.notebook.tab(tab['frame'], "text"),
@@ -247,7 +270,7 @@ class EditorUI(tk.Tk):
 
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(project_state, f, indent=4, ensure_ascii=False)
+                json.dump(project_data, f, indent=4, ensure_ascii=False)
             messagebox.showinfo("Sucesso", "Projeto salvo com sucesso!")
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao salvar projeto: {e}")
@@ -272,6 +295,10 @@ class EditorUI(tk.Tk):
         for tab in self.tabs_data:
             self.notebook.forget(tab['frame'])
         self.tabs_data = []
+
+        # Carregar pool global se existir
+        if isinstance(project_state, dict) and "global_tab_pool" in project_state:
+            self.global_tab_pool = MediaPoolManager.from_dict(project_state["global_tab_pool"])
 
         # Recriar abas
         tabs_to_load = project_state.get("tabs", []) if isinstance(project_state, dict) else project_state
