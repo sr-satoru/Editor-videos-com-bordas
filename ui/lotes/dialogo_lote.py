@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
-from ui.lotes.utilitarios import selecionar_arquivo, selecionar_pasta
-from ui.polls_lotes import PoolLotesUI
+from .utilitarios import selecionar_arquivo, selecionar_pasta
+from .pool_lotes import PoolLotesUI
 
 class DialogoLote(tk.Toplevel):
     """Diálogo profissional para Adicionar ou Editar um Lote de vídeos"""
