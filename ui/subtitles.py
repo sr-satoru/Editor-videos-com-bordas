@@ -146,6 +146,8 @@ class Subtitles(ttk.Frame):
                 'border': estilo['border'],
                 'bg': estilo['bg'],
                 'border_thickness': estilo['border_thickness'],
+                'align': estilo.get('align', 'center'),
+                'italic': estilo.get('italic', False),
                 'start_time': estilo.get('start_time', 0.0),
                 'end_time': estilo.get('end_time', 10.0)
             })
@@ -175,6 +177,8 @@ class Subtitles(ttk.Frame):
                     "border": estilo['border'],
                     "bg": estilo['bg'],
                     "border_thickness": estilo['border_thickness'],
+                    "align": estilo.get('align', 'center'),
+                    "italic": estilo.get('italic', False),
                     "x": 135,
                     "y": 400,
                     "start_time": estilo.get('start_time', 0.0),
@@ -212,6 +216,8 @@ class Subtitles(ttk.Frame):
                 border=estilo['border'],
                 bg=estilo['bg'],
                 border_thickness=estilo['border_thickness'],
+                align=estilo.get('align', 'center'),
+                italic=estilo.get('italic', False),
                 start_time=estilo.get('start_time', 0.0),
                 end_time=estilo.get('end_time', 10.0)
             )
@@ -225,6 +231,8 @@ class Subtitles(ttk.Frame):
                 border_color=estilo['border'],
                 bg_color=estilo['bg'],
                 border_thickness=estilo['border_thickness'],
+                align=estilo.get('align', 'center'),
+                italic=estilo.get('italic', False),
                 x=135, y=400,
                 start_time=estilo.get('start_time', 0.0),
                 end_time=estilo.get('end_time', 10.0)
@@ -253,6 +261,8 @@ class Subtitles(ttk.Frame):
                 'border': sub['border'],
                 'bg': sub['bg'],
                 'border_thickness': sub['border_thickness'],
+                'align': sub.get('align', 'center'),
+                'italic': sub.get('italic', False),
                 'start_time': sub.get('start_time', 0.0),
                 'end_time': sub.get('end_time', 10.0)
             })
@@ -882,8 +892,12 @@ class Subtitles(ttk.Frame):
                 border_color=sub['border'],
                 bg_color=sub['bg'],
                 border_thickness=sub['border_thickness'],
+                align=sub.get('align', 'center'),
+                italic=sub.get('italic', False),
                 x=sub['x'],
-                y=sub['y']
+                y=sub['y'],
+                start_time=sub.get('start_time', 0.0),
+                end_time=sub.get('end_time', 10.0)
             )
         
         self.comp_emojis.set_state(state.get("emojis", {}))
