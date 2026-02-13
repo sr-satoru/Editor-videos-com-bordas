@@ -119,8 +119,7 @@ class VideoControls(ttk.LabelFrame):
             s = int(s % 60)
             return f"{m:02d}:{s:02d}"
         self.time_label.config(text=f"{fmt(current)} / {fmt(total)}")
-
-
+    def get_state(self):
         return {
             "current_video_path": self.video_selector.current_video_path,
             "enable_enhancement": self.enable_enhancement.get()

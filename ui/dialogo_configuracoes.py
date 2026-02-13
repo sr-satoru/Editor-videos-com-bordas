@@ -285,7 +285,7 @@ class DialogoConfiguracoes(tk.Toplevel):
             
             # Salvar pool global das abas
             pool_data = self.tab_pool_abas.get_pool_data()
-            from modules.media_pool_manager import MediaPoolManager
+            from modules.polls.manager import MediaPoolManager
             self.editor_ui.global_tab_pool = MediaPoolManager.from_dict(pool_data)
             
             messagebox.showinfo("Sucesso", "✓ Configurações salvas com sucesso!\n\nAs mudanças foram aplicadas imediatamente.")

@@ -116,8 +116,8 @@ class BatchQueueManager:
     def set_editor_ui(self, editor_ui):
         """Define referência ao EditorUI para poder chamar render_all_tabs()"""
         self.editor_ui = editor_ui
-        from modules.polls_batch_backend import BatchPoolBackend
-        self.pool_backend = BatchPoolBackend(editor_ui)
+        from modules.polls.poll_lotes.backend import LotesBackend
+        self.pool_backend = LotesBackend(editor_ui)
     
     def add_batch(self, name: str, input_path: str, output_folder: str, 
                   audio_folder: Optional[str] = None, 
@@ -247,7 +247,7 @@ class BatchQueueManager:
         
         # Restaurar pools das abas
         if self.pool_backend:
-            self.pool_backend.restore_original_pools()
+            self.pool_backend.restore_pools()
             
         print("[BatchQueue] Fila parada")
     
@@ -282,25 +282,17 @@ class BatchQueueManager:
         # Verificar se terminou todos os lotes
         if self.current_batch_index >= len(self.batches):
             print("[BatchQueue] 🎉 Todos os lotes foram processados!")
-            self.is_active = False
             
             # Sincronizar com orquestrador
             render_orchestrator.set_busy(False)
             
-            # Restaurar pools das abas ao finalizar a fila toda
-            if self.pool_backend:
-                self.pool_backend.restore_original_pools()
-
             self.save_to_file()
             self._notify_status_change()
             
             if self.on_queue_complete:
-                self.on_queue_complete()
+                # Fila concluída!
+                self.stop_queue()
             
-            # Restaurar pools das abas ao finalizar a fila toda
-            if self.pool_backend:
-                self.pool_backend.restore_original_pools()
-
             # Enviar notificação
             from modules.notifier import Notifier
             completed = sum(1 for b in self.batches if b.status == "completed")

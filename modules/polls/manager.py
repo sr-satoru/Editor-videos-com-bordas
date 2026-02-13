@@ -1,5 +1,6 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Dict
+from modules.polls.utils.selectors import Selector
 
 class MediaPoolManager:
     """
@@ -49,17 +50,11 @@ class MediaPoolManager:
     def get_video_for_index(self, index: int) -> Optional[str]:
         """
         Retorna um vídeo do pool baseado no índice informado.
-        A distribuição é sequencial usando o operador módulo.
+        Usa o Selector utilitário para lógica sequencial.
         """
-        pool = self.get_full_pool()
-        if not pool:
-            return None
-        
-        # Algoritmo Sequencial: index % tamanho_do_pool
-        target_index = index % len(pool)
-        return pool[target_index]
+        return Selector.get_sequential(self.get_full_pool(), index)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict:
         """Serializa o estado para JSON"""
         return {
             "enabled": self.enabled,
@@ -68,9 +63,10 @@ class MediaPoolManager:
         }
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Dict):
         """Cria uma instância a partir de um dicionário"""
         instance = cls()
+        if not data: return instance
         instance.enabled = data.get("enabled", False)
         instance.primary_video = data.get("primary_video")
         instance.secondary_videos = data.get("secondary_videos", [])

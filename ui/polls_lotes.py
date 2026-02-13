@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import os
-from modules.media_pool_manager import MediaPoolManager
+from modules.polls.manager import MediaPoolManager
 
 class PoolLotesUI(ttk.LabelFrame):
     """
@@ -48,19 +48,13 @@ class PoolLotesUI(ttk.LabelFrame):
 
     def _refresh_list(self):
         self.listbox.delete(0, tk.END)
-        
-        if self.pool_manager.primary_video:
-            name = os.path.basename(self.pool_manager.primary_video)
-            self.listbox.insert(tk.END, f"⭐ PRINCIPAL: {name}")
-            self.listbox.itemconfig(tk.END, {'fg': 'blue'})
-            
         for vid in self.pool_manager.secondary_videos:
             name = os.path.basename(vid)
-            self.listbox.insert(tk.END, f"📁 SECUNDÁRIO: {name}")
+            self.listbox.insert(tk.END, f"📁 Mídia: {name}")
 
     def _add_media(self):
         filepaths = filedialog.askopenfilenames(
-            title="Selecionar Mídias para o Pool do Lote",
+            title="Selecionar Mídias Adicionais para o Pool",
             filetypes=[
                 ("Todos Suportados", "*.mp4 *.mov *.avi *.mkv *.png *.jpg *.jpeg *.bmp *.webp"),
                 ("Vídeos", "*.mp4 *.mov *.avi *.mkv"),
@@ -69,10 +63,7 @@ class PoolLotesUI(ttk.LabelFrame):
         )
         if filepaths:
             for path in filepaths:
-                if not self.pool_manager.primary_video:
-                    self.pool_manager.add_primary(path)
-                else:
-                    self.pool_manager.add_secondary(path)
+                self.pool_manager.add_secondary(path)
             self._refresh_list()
 
     def _remove_media(self):
@@ -81,17 +72,7 @@ class PoolLotesUI(ttk.LabelFrame):
             return
             
         index = selection[0]
-        # Se tem principal, index 0 é o principal
-        if self.pool_manager.primary_video:
-            if index == 0:
-                self.pool_manager.primary_video = None
-                # Se houver secundários, promover o primeiro a principal? 
-                # Por simplicidade, apenas removemos.
-            else:
-                self.pool_manager.secondary_videos.pop(index - 1)
-        else:
-            self.pool_manager.secondary_videos.pop(index)
-            
+        self.pool_manager.secondary_videos.pop(index)
         self._refresh_list()
 
     def _clear_pool(self):

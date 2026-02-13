@@ -17,7 +17,8 @@ from tkinter import filedialog, messagebox
 
 from modules.subiitels.gerenciador_legendas import GerenciadorLegendas
 from modules.subiitels.gerenciador_emojis import GerenciadorEmojis
-from modules.media_pool_manager import MediaPoolManager
+from modules.polls.manager import MediaPoolManager
+from modules.polls.poll_videos_abas.processor import AbasProcessor
 
 class EditorUI(tk.Tk):
     def __init__(self):
@@ -202,14 +203,9 @@ class EditorUI(tk.Tk):
         from modules.batch_queue_manager import batch_queue_manager
         
         if not batch_queue_manager.is_active and self.global_tab_pool.enabled:
-            print(f"[MainUI] Pool Global de Abas ativo. Distribuindo entre {self.total_tabs_to_render} abas...")
             try:
-                for i, tab in enumerate(self.tabs_data):
-                    video_path = self.global_tab_pool.get_video_for_index(i)
-                    if video_path:
-                        # Carrega o vídeo na aba de forma silenciosa e atualiza o preview
-                        tab['video_controls'].video_selector.load_video(video_path)
-                        tab['subtitles'].update_preview()
+                processor = AbasProcessor(self)
+                processor.distribute_global_pool()
             except Exception as e:
                 print(f"[MainUI] Erro ao aplicar pool global: {e}")
         # ---------------------------------------------------------
@@ -266,7 +262,7 @@ class EditorUI(tk.Tk):
                 "output": tab['output'].get_state(),
                 "mesclagem": tab['mesclagem'].get_state()  # Novo: vídeos de mesclagem/CTA
             }
-            project_state.append(tab_state)
+            project_data["tabs"].append(tab_state)
 
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -298,6 +294,7 @@ class EditorUI(tk.Tk):
 
         # Carregar pool global se existir
         if isinstance(project_state, dict) and "global_tab_pool" in project_state:
+            from modules.polls.manager import MediaPoolManager
             self.global_tab_pool = MediaPoolManager.from_dict(project_state["global_tab_pool"])
 
         # Recriar abas
