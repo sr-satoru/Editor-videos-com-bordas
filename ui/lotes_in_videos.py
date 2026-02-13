@@ -15,6 +15,7 @@ class LotesInVideos(ttk.Frame):
         self.batch_manager.on_status_change = self.update_ui
         
         self._build_ui()
+        self._update_queue_indicator()  # Atualizar indicador inicial
         self.update_ui()
     
     def _build_ui(self):
@@ -22,6 +23,15 @@ class LotesInVideos(ttk.Frame):
         # Cabeçalho informativo
         header_frame = ttk.Frame(self)
         header_frame.pack(fill="x", padx=10, pady=10)
+        
+        # Indicador de arquivo de fila ativo
+        self.queue_file_label = ttk.Label(
+            header_frame,
+            text="",
+            font=("Segoe UI", 9, "bold"),
+            foreground="#3498db"
+        )
+        self.queue_file_label.pack(side="left", padx=(0, 15))
         
         warning_label = ttk.Label(
             header_frame,
@@ -462,3 +472,24 @@ class LotesInVideos(ttk.Frame):
 
         # Agendar execução na thread principal do Tkinter
         self.after(0, _perform_update)
+    
+    def refresh_from_manager(self):
+        """Atualiza interface após troca de fila"""
+        self.update_ui()
+        self._update_queue_indicator()
+    
+    def _update_queue_indicator(self):
+        """Atualiza label mostrando arquivo de fila ativo"""
+        queue_name = self.batch_manager.get_current_queue_name()
+        
+        if queue_name == "global":
+            self.queue_file_label.config(
+                text="📂 Arquivo: global (batch_queue_state.json)",
+                foreground="#2ecc71"  # Verde
+            )
+        else:
+            self.queue_file_label.config(
+                text=f"📂 Arquivo: {queue_name}.json",
+                foreground="#3498db"  # Azul
+            )
+

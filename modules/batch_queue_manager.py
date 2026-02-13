@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Callable
 from dataclasses import dataclass, asdict
 from modules.render_orchestrator import render_orchestrator
+from modules.queue_file_manager import queue_file_manager
 
 
 @dataclass
@@ -36,7 +37,6 @@ class BatchQueueManager:
     """Gerenciador singleton da fila de lotes"""
     
     _instance = None
-    _STATE_FILE = "batch_queue_state.json"
     
     def __new__(cls):
         if cls._instance is None:
@@ -56,12 +56,60 @@ class BatchQueueManager:
         # Callbacks
         self.on_status_change: Optional[Callable] = None
         self.on_queue_complete: Optional[Callable] = None
+        self.on_queue_switch: Optional[Callable] = None  # Callback para quando fila trocar
         
         # Referência ao EditorUI
         self.editor_ui = None
         
         self._initialized = True
         self.load_from_file()
+    
+    @property
+    def _STATE_FILE(self) -> str:
+        """Retorna caminho do arquivo de fila ativo (dinâmico)"""
+        return queue_file_manager.get_current_file_path()
+    
+    def get_current_queue_name(self) -> str:
+        """Retorna nome da fila atualmente ativa"""
+        return queue_file_manager.get_current_queue_name()
+    
+    def switch_to_global(self) -> bool:
+        """Volta para fila global"""
+        self.save_to_file()  # Salvar fila atual
+        queue_file_manager.switch_to_global()
+        self.load_from_file()  # Carregar global
+        self._notify_status_change()
+        if self.on_queue_switch:
+            self.on_queue_switch()
+        return True
+    
+    def switch_to_custom(self, queue_name: str) -> bool:
+        """Troca para fila personalizada"""
+        self.save_to_file()  # Salvar fila atual
+        if not queue_file_manager.switch_to_custom(queue_name):
+            return False
+        self.load_from_file()  # Carregar nova fila
+        self._notify_status_change()
+        if self.on_queue_switch:
+            self.on_queue_switch()
+        return True
+    
+    def switch_from_file_path(self, file_path: str) -> bool:
+        """Troca para fila a partir de caminho de arquivo"""
+        self.save_to_file()  # Salvar fila atual
+        if not queue_file_manager.switch_from_file_path(file_path):
+            return False
+        self.load_from_file()  # Carregar nova fila
+        self._notify_status_change()
+        if self.on_queue_switch:
+            self.on_queue_switch()
+        return True
+    
+    def create_and_switch_to_queue(self, queue_name: str) -> bool:
+        """Cria nova fila e automaticamente troca para ela"""
+        if not queue_file_manager.create_queue(queue_name):
+            return False
+        return self.switch_to_custom(queue_name)
     
     def set_editor_ui(self, editor_ui):
         """Define referência ao EditorUI para poder chamar render_all_tabs()"""

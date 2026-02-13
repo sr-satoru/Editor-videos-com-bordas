@@ -16,3 +16,7 @@ json
 models/
 *.pth
 audio-2
+
+# Arquivos de fila personalizados (mas manter .gitkeep)
+batch_queues/
+!batch_queues/.gitkeep

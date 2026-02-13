@@ -6,6 +6,7 @@ from modules.config_global import global_config
 from ui.dialog_imagem_video import DialogImagemVideo
 from ui.componentes_custom import ToggleSwitch
 from ui.lotes_in_videos import LotesInVideos
+from ui.gerenciador_filas import GerenciadorFilas
 
 
 class DialogoConfiguracoes(tk.Toplevel):
@@ -43,10 +44,12 @@ class DialogoConfiguracoes(tk.Toplevel):
         self.tab_general = ttk.Frame(self.notebook, padding=15)
         self.tab_notifications = ttk.Frame(self.notebook, padding=15)
         self.tab_lotes = LotesInVideos(self.notebook, self.editor_ui)
+        self.tab_arquivos_lotes = GerenciadorFilas(self.notebook, self.editor_ui)
         
         self.notebook.add(self.tab_general, text=" ⚙️ Geral ")
         self.notebook.add(self.tab_notifications, text=" 🔔 Notificações ")
         self.notebook.add(self.tab_lotes, text=" 📦 Lotes ")
+        self.notebook.add(self.tab_arquivos_lotes, text=" 📂 Arquivos Lotes ")
         
         # Preencher abas
         self._create_general_tab()
