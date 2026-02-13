@@ -29,7 +29,9 @@ def extrair_estilo_legenda(componente_estilo):
         'color': estilo.get('color', '#FFFFFF'),
         'border': border_color,
         'bg': estilo.get('bg', ''),
-        'border_thickness': border_thickness
+        'border_thickness': border_thickness,
+        'align': estilo.get('align', 'center'),
+        'italic': estilo.get('italic', False)
     }
 
 
@@ -80,7 +82,9 @@ def aplicar_estilo_legenda(subtitle_data, estilo):
         'color': estilo.get('color', subtitle_data.get('color', '#FFFFFF')),
         'border': estilo.get('border', subtitle_data.get('border', '#000000')),
         'bg': estilo.get('bg', subtitle_data.get('bg', '')),
-        'border_thickness': estilo.get('border_thickness', subtitle_data.get('border_thickness', 2))
+        'border_thickness': estilo.get('border_thickness', subtitle_data.get('border_thickness', 2)),
+        'align': estilo.get('align', subtitle_data.get('align', 'center')),
+        'italic': estilo.get('italic', subtitle_data.get('italic', False))
     })
     
     return subtitle_data

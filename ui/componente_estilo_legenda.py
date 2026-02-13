@@ -18,6 +18,10 @@ class ComponenteEstiloLegenda(ttk.LabelFrame):
         self.bg_color = tk.StringVar(value="")
         self.border_thickness = tk.IntVar(value=2)
         
+        # Formatação de texto
+        self.text_align = tk.StringVar(value="center")
+        self.text_italic = tk.BooleanVar(value=False)
+        
         # Controle de tempo manual
         self.use_manual_timing = tk.BooleanVar(value=False)
         self.start_time = tk.DoubleVar(value=0.0)
@@ -49,6 +53,30 @@ class ComponenteEstiloLegenda(ttk.LabelFrame):
         thickness_spinbox = ttk.Spinbox(controls_frame, from_=0, to=10, textvariable=self.border_thickness, width=8, 
                                         command=lambda: self.callbacks.get('on_change', lambda: None)())
         thickness_spinbox.grid(row=4, column=1, padx=5, pady=5, sticky="w")
+        
+        # Row 4 (lado direito): Alinhamento
+        ttk.Label(controls_frame, text="Alinhamento:").grid(row=4, column=3, padx=5, pady=5, sticky="w")
+        align_options = [("⬅️ Esquerda", "left"), ("↔️ Centro", "center"), ("➡️ Direita", "right")]
+        align_combo = ttk.Combobox(controls_frame, textvariable=self.text_align, 
+                                   values=[opt[0] for opt in align_options], width=15, state="readonly")
+        align_combo.grid(row=4, column=4, padx=5, pady=5, sticky="w")
+        # Mapear seleção visual para valor interno
+        def on_align_change(event):
+            selected = align_combo.get()
+            for label, value in align_options:
+                if label == selected:
+                    self.text_align.set(value)
+                    break
+            if self.callbacks.get('on_change'): self.callbacks['on_change']()
+        align_combo.bind("<<ComboboxSelected>>", on_align_change)
+        # Definir valor inicial
+        align_combo.set("↔️ Centro")
+        
+        # Row 4 (mais à direita): Itálico
+        ttk.Label(controls_frame, text="Itálico:").grid(row=4, column=5, padx=(15, 5), pady=5, sticky="w")
+        italic_check = ttk.Checkbutton(controls_frame, variable=self.text_italic, 
+                                      command=lambda: self.callbacks.get('on_change', lambda: None)())
+        italic_check.grid(row=4, column=6, padx=5, pady=5, sticky="w")
         
         # Row 5: Toggle para controle manual de tempo
         timing_toggle_frame = ttk.Frame(controls_frame)
@@ -134,6 +162,8 @@ class ComponenteEstiloLegenda(ttk.LabelFrame):
             "border": self.border_color.get(),
             "bg": self.bg_color.get(),
             "border_thickness": self.border_thickness.get(),
+            "align": self.text_align.get(),
+            "italic": self.text_italic.get(),
             "start_time": self.start_time.get(),
             "end_time": self.end_time.get(),
             "use_manual_timing": self.use_manual_timing.get()
@@ -149,6 +179,8 @@ class ComponenteEstiloLegenda(ttk.LabelFrame):
         self.border_color.set(state.get("border", "#000000"))
         self.bg_color.set(state.get("bg", ""))
         self.border_thickness.set(state.get("border_thickness", 2))
+        self.text_align.set(state.get("align", "center"))
+        self.text_italic.set(state.get("italic", False))
         self.use_manual_timing.set(state.get("use_manual_timing", False))
         self.start_time.set(state.get("start_time", 0.0))
         self.end_time.set(state.get("end_time", 1000.0))

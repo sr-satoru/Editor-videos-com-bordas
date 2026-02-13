@@ -2,6 +2,7 @@ import re
 import platform
 import os
 from PIL import Image, ImageDraw, ImageFont
+from modules.text_formatter import TextFormatter
 
 class RenderizadorLegendas:
     def __init__(self, gerenciador_emojis):
@@ -15,7 +16,8 @@ class RenderizadorLegendas:
         return (
             sub.get("text"), sub.get("font"), sub.get("size"),
             sub.get("color"), sub.get("border"), sub.get("bg"),
-            sub.get("border_thickness"), scale_factor, emoji_scale
+            sub.get("border_thickness"), sub.get("align"), sub.get("italic"),
+            scale_factor, emoji_scale
         )
 
     def _render_to_cache(self, sub, scale_factor, emoji_scale):
@@ -24,7 +26,8 @@ class RenderizadorLegendas:
             return self.cache[key]
 
         # Calcular dimensões necessárias para a imagem da legenda
-        font = self._get_font(sub["font"], int(sub["size"] * scale_factor))
+        italic = sub.get("italic", False)
+        font = TextFormatter.get_font(sub["font"], int(sub["size"] * scale_factor), italic=italic)
         text = sub["text"]
         emoji_pattern = r'\[EMOJI:([^\]]+)\]'
         lines = text.split('\n')
@@ -60,29 +63,33 @@ class RenderizadorLegendas:
         draw = ImageDraw.Draw(sub_img)
         
         # Renderizar na imagem transparente
+        align = sub.get("align", "center")
         curr_y = margin + line_height // 2
         for i, line in enumerate(lines):
             line_w = 0
-            # Primeiro calcula largura da linha para centralizar no canvas se quiser, 
-            # mas vamos manter alinhado à esquerda no 'nosso' canvas por simplicidade
-            # e o draw_subtitle cuida do offset.
+            # Calcular largura da linha para poder alinhar
+            parts = re.split(emoji_pattern, line)
+            line_width = 0
+            for k, p in enumerate(parts):
+                if k % 2 == 0:
+                    if p:
+                        bbox = draw.textbbox((0, 0), p, font=font)
+                        line_width += bbox[2] - bbox[0]
+                else:
+                    if self.gerenciador_emojis.get_emoji(p): 
+                        line_width += int(font.size * emoji_scale)
             
-            # Aqui vamos centralizar a linha dentro do canvas_w para facilitar o paste centralizado
-            # mas o original alinha à esquerda dentro do bloco. Vamos seguir o original.
-            curr_x = margin
+            # Calcular posição X inicial baseada no alinhamento
+            if align == "left":
+                curr_x = margin
+            elif align == "right":
+                curr_x = canvas_w - margin - line_width
+            else:  # center
+                curr_x = (canvas_w - line_width) // 2
             
             if sub.get("bg"):
-                # Medir linha para o fundo
-                parts = re.split(emoji_pattern, line)
-                lw = 0
-                for k, p in enumerate(parts):
-                    if k % 2 == 0:
-                        if p:
-                            bbox = draw.textbbox((0, 0), p, font=font)
-                            lw += bbox[2] - bbox[0]
-                    else:
-                        if self.gerenciador_emojis.get_emoji(p): lw += int(font.size * emoji_scale)
-                draw.rectangle([curr_x-5, curr_y-font.size//2, curr_x+lw+5, curr_y+font.size//2], fill=sub["bg"])
+                # Desenhar fundo para a linha
+                draw.rectangle([curr_x-5, curr_y-font.size//2, curr_x+line_width+5, curr_y+font.size//2], fill=sub["bg"])
 
             parts = re.split(emoji_pattern, line)
             for j, part in enumerate(parts):

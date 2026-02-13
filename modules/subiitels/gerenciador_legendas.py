@@ -6,7 +6,7 @@ class GerenciadorLegendas:
         self.subtitles = []
         self.counter = 0
 
-    def add_subtitle(self, text, font="Arial Black", size=18, color="#FFFFFF", border_color="#000000", bg_color="", x=135, y=400, border_thickness=2, start_time=0.0, end_time=10.0):
+    def add_subtitle(self, text, font="Arial Black", size=18, color="#FFFFFF", border_color="#000000", bg_color="", x=135, y=400, border_thickness=2, align="center", italic=False, start_time=0.0, end_time=10.0):
         self.counter += 1
         subtitle = {
             "id": self.counter,
@@ -17,6 +17,8 @@ class GerenciadorLegendas:
             "border": border_color,
             "bg": bg_color,
             "border_thickness": border_thickness,
+            "align": align,
+            "italic": italic,
             "x": x,
             "y": y,
             "start_time": start_time,
