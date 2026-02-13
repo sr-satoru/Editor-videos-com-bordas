@@ -336,13 +336,14 @@ class BatchQueueManager:
             return
         
         try:
-            # 1. Aplicar Pool do Lote (E salvar originais)
-            if self.pool_backend:
-                self.pool_backend.apply_batch_pool(batch.media_pool_data)
-            
-            # 2. Carregar vídeo base em todas as abas
+            # 1. Carregar vídeo base em todas as abas (âncora inicial)
             print(f"[BatchQueue] Carregando vídeo base: {batch.input_path}")
             self.editor_ui.load_video_all_tabs_from_path(batch.input_path)
+
+            # 2. Aplicar Pool do Lote (E salvar originais)
+            # O backend vai sobrescrever as abas necessárias (1, 2, 3...) com o pool
+            if self.pool_backend:
+                self.pool_backend.apply_batch_pool(batch.media_pool_data)
             
             # 2. Mudar pasta de saída em todas as abas
             print(f"[BatchQueue] Mudando pasta de saída: {batch.output_folder}")
